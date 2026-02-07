@@ -27,5 +27,13 @@ int main(int argc, char* argv[]) {
     if (!line.empty()) tree.insert(line);
   }
   file.close();
+
+  // --- Visualization ---
+  // Instead of just inOrder(), we use our new structured printer
+  TreePrinter::print(tree); 
+
+  string test = "طعام";
+    cout << "Is" << test << "in the tree? "
+    << (tree.search(test) ? "Yes" : "No") << endl;
   return 0;
 }
