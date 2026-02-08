@@ -1,39 +1,32 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include "AVLTree.h" // Your template header
+#include "AVLTree.h"
 #include "treePrinter.h"
+#include "schemeHashTable.h"
 
 using namespace std;
 
 int main(int argc, char* argv[]) {
-  if (argc < 2) {
-    cerr << "Usage: " << argv[0] << " <filename>" << endl;
+  if (argc < 3) {
+    cerr << "Usage: " << argv[0] << " <roots_file> <schemes_file>" << endl;
     return 1;
   }
+
+  string rootsFile = argv[1];
+  string schemesFile = argv[2];
 
   AVLTree<string> tree;
-  string filename = argv[1];
-  ifstream file(filename);
+  tree.loadFromFile(rootsFile);
 
-  if (!file.is_open()) {
-    cerr << "Error: Could not open " << filename << endl;
-    return 1;
-  }
+  SchemeHashTable schemesTable;
+  schemesTable.loadFromFile(schemesFile);
 
-  string line;
-  while (getline(file, line)) {
-    if (!line.empty() && line.back() == '\r') line.pop_back();
-    if (!line.empty()) tree.insert(line);
-  }
-  file.close();
+  cout << "--- Current Roots Tree ---" << endl;
+  TreePrinter::print(tree);
 
-  // --- Visualization ---
-  // Instead of just inOrder(), we use our new structured printer
-  TreePrinter::print(tree); 
+  cout << "\n--- Current Schemes ---" << endl;
+  schemesTable.display(); 
 
-  string test = "طعام";
-    cout << "Is" << test << "in the tree? "
-    << (tree.search(test) ? "Yes" : "No") << endl;
   return 0;
 }
