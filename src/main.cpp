@@ -1,32 +1,52 @@
 #include <iostream>
-#include <fstream>
 #include <string>
 #include "AVLTree.h"
-#include "treePrinter.h"
 #include "schemeHashTable.h"
+#include "menu.h" 
 
 using namespace std;
 
 int main(int argc, char* argv[]) {
-  if (argc < 3) {
-    cerr << "Usage: " << argv[0] << " <roots_file> <schemes_file>" << endl;
-    return 1;
-  }
+    if (argc < 3) {
+        cerr << "Usage: " << argv[0] << " <roots_file> <schemes_file>" << endl;
+        return 1;
+    }
 
-  string rootsFile = argv[1];
-  string schemesFile = argv[2];
+    // Load Data
+    AVLTree<string> tree;
+    tree.loadFromFile(argv[1]);
 
-  AVLTree<string> tree;
-  tree.loadFromFile(rootsFile);
+    SchemeHashTable schemes;
+    schemes.loadFromFile(argv[2]);
 
-  SchemeHashTable schemesTable;
-  schemesTable.loadFromFile(schemesFile);
+    int mainChoice;
 
-  cout << "--- Current Roots Tree ---" << endl;
-  TreePrinter::print(tree);
+    while (true) {
+        cout << "\n========================================" << endl;
+        cout << "   ARABIC MORPHOLOGY SYSTEM" << endl;
+        cout << "========================================" << endl;
+        cout << "1. Morphology Operations (Generate/Validate)" << endl;
+        cout << "2. Manage Roots (Add/Edit/Delete)" << endl;
+        cout << "3. Manage Schemes (Add/Edit/Delete)" << endl;
+        cout << "0. Exit" << endl;
+        cout << "========================================" << endl;
+        cout << "Select Option: ";
+        cin >> mainChoice;
 
-  cout << "\n--- Current Schemes ---" << endl;
-  schemesTable.display(); 
+        if (cin.fail()) { 
+            cin.clear(); 
+            cin.ignore(10000, '\n'); 
+            mainChoice = -1;
+        }
 
-  return 0;
+        switch (mainChoice) {
+            case 1: morphologyMenu(tree, schemes); break;
+            case 2: manageRoots(tree); break;
+            case 3: manageSchemes(schemes); break;
+            case 0: cout << "Exiting... Goodbye!" << endl; return 0;
+            default: cout << "Invalid selection. Try again." << endl;
+        }
+    }
+
+    return 0;
 }
