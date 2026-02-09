@@ -5,13 +5,13 @@
 #include <string>
 #include <vector>
 #include <list>
-#include <fstream>  
+#include <fstream>
 
 using namespace std;
 
 struct Scheme {
-  string name;    
-  string pattern; 
+  string name;
+  string pattern;
 
   Scheme(string n, string p) : name(n), pattern(p) {}
 };
@@ -115,6 +115,16 @@ class SchemeHashTable {
         }
       }
       return "";
+    }
+
+    vector<Scheme> getAllSchemes() {
+      vector<Scheme> allSchemes;
+      for (int i = 0; i < numBuckets; i++) {
+        for (const auto& scheme : table[i]) {
+          allSchemes.push_back(scheme);
+        }
+      }
+      return allSchemes;
     }
 
     void display() {

@@ -1,12 +1,13 @@
+// Code from https://www.geeksforgeeks.org/cpp/cpp-program-to-implement-avl-tree/
+
 #ifndef AVLTREE_H  
 #define AVLTREE_H 
 
-// Code from https://www.geeksforgeeks.org/cpp/cpp-program-to-implement-avl-tree/
-
 #include <algorithm>
 #include <iostream>
-using namespace std;
+#include <fstream>  
 
+using namespace std;
 
 template <typename T> class AVLNode {
   public:
@@ -242,6 +243,7 @@ template <typename T> class AVLTree {
         return search(root->left, key);
       return search(root->right, key);
     }
+
     void saveToFileHelper(AVLNode<T>* node, ofstream& file) {
       if (node != nullptr) {
         saveToFileHelper(node->left, file);
@@ -265,7 +267,7 @@ template <typename T> class AVLTree {
       ifstream file(filename);
 
       if (!file.is_open()) {
-            cout << "Warning: Scheme file '" << filename << "' not found. A new one will be created." << endl;
+        cout << "Warning: Scheme file '" << filename << "' not found. A new one will be created." << endl;
         return;
       }
 
@@ -293,7 +295,7 @@ template <typename T> class AVLTree {
       root = insert(root, key);
       saveToFile(); 
     }
-    
+
     // Function to search for a key in the AVL tree
     void remove(T key) {
       root = deleteNode(root, key);
@@ -306,6 +308,9 @@ template <typename T> class AVLTree {
     {
       inorder(root);
       cout << endl;
+    }
+    bool search(T key) {
+      return search(this->root, key);
     }
 };
 #endif
