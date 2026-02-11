@@ -6,12 +6,22 @@
 #include <algorithm>
 #include <iostream>
 #include <fstream>  
+#include <vector>
+#include <sstream>
+#include <string>
 
 using namespace std;
+
+struct DerivedWord {
+  string word;
+  int frequency;
+  DerivedWord(string w, int f = 1) : word(w), frequency(f) {}
+};
 
 template <typename T> class AVLNode {
   public:
     T key; 
+    vector<DerivedWord> derivedWords;
     AVLNode* left; 
     AVLNode* right; 
     int height; 
@@ -221,6 +231,17 @@ template <typename T> class AVLTree {
       return root;
     }
 
+    AVLNode<T>* search(AVLNode<T>* node, T key) {
+      if (node == nullptr || node->key == key) return node;
+      if (key < node->key) return search(node->left, key);
+      return search(node->right, key);
+    }
+
+    // Helper for Recursive Delete (Destructor)
+    void clear(AVLNode<T>* node) {
+      if(node) { clear(node->left); clear(node->right); delete node; }
+    }
+
     // function to perform inorder traversal of the tree
     void inorder(AVLNode<T>* root)
     {
@@ -233,21 +254,17 @@ template <typename T> class AVLTree {
 
     // function to search for a key in the subtree rooted
     // with root
-    bool search(AVLNode<T>* root, T key)
-    {
-      if (root == nullptr)
-        return false;
-      if (root->key == key)
-        return true;
-      if (key < root->key)
-        return search(root->left, key);
-      return search(root->right, key);
-    }
-
     void saveToFileHelper(AVLNode<T>* node, ofstream& file) {
       if (node != nullptr) {
         saveToFileHelper(node->left, file);
-        file << node->key << endl;
+
+        file << node->key;
+
+        for(const auto& dw : node->derivedWords) {
+          file << " " << dw.word << " " << dw.frequency;
+        }
+        file << endl;
+
         saveToFileHelper(node->right, file);
       }
     }
@@ -262,6 +279,21 @@ template <typename T> class AVLTree {
     {
     }
 
+    ~AVLTree() { clear(root); }
+    void saveToFile(string fname = "") {
+      if (fname != "") filename = fname;
+      if (filename.empty()) return; 
+
+      ofstream file(filename);
+      if (!file.is_open()) {
+        cerr << "Error: Could not open file '" << filename << "'." << endl;
+        return;
+      }
+      saveToFileHelper(root, file);
+      file.close();
+      cout << "Saved roots and derived families to " << filename << endl;
+    }
+
     void loadFromFile(string fname) {
       filename = fname;
       ifstream file(filename);
@@ -271,35 +303,40 @@ template <typename T> class AVLTree {
         return;
       }
 
-      T key;
-      while (file >> key) { 
-        root = insert(root, key);
-      }
-      file.close();
-    }
+      // Clear existing data before loading
+      clear(root); 
+      root = nullptr;
 
-    void saveToFile() {
-      if (filename.empty()) return; 
+      string line;
+      while (getline(file, line)) {
+        if(line.empty()) continue;
+        stringstream ss(line);
 
-      ofstream file(filename);
-      if (!file.is_open()) {
-        cerr << "Error: Could not open file '" << filename << "' for writing." << endl;
-        return;
+        T key;
+        ss >> key; // Read Root
+        root = insert(root, key); // Insert Root
+
+        // Find the node we just inserted to add words to it
+        AVLNode<T>* node = search(root, key);
+
+        string word;
+        int freq;
+        // Read pairs of Word + Frequency
+        while(ss >> word >> freq) {
+          node->derivedWords.push_back(DerivedWord(word, freq));
+        }
       }
-      saveToFileHelper(root, file);
       file.close();
     }
 
     // Function to insert a key into the AVL tree
     void insert(T key) {
       root = insert(root, key);
-      saveToFile(); 
     }
 
     // Function to search for a key in the AVL tree
     void remove(T key) {
       root = deleteNode(root, key);
-      saveToFile(); 
     }
 
     // Function to print the inorder traversal of the AVL
@@ -310,7 +347,35 @@ template <typename T> class AVLTree {
       cout << endl;
     }
     bool search(T key) {
-      return search(this->root, key);
+      return (search(this->root, key) != nullptr );
+    }
+
+    // NEW: Add Derived Word with Frequency Logic
+    void addDerivedWord(T key, string word) {
+      AVLNode<T>* node = search(root, key);
+      if (node != nullptr) {
+        for (auto& dw : node->derivedWords) {
+          if (dw.word == word) {
+            dw.frequency++; // Increment if exists
+            return;
+          }
+        }
+        // Add new if not found
+        node->derivedWords.push_back(DerivedWord(word, 1));
+      }
+    }
+
+    void showFamily(T key) {
+      AVLNode<T>* node = search(root, key);
+      if (node) {
+        cout << "Family for '" << key << "': ";
+        for (auto& dw : node->derivedWords) {
+          cout << "[" << dw.word << ": " << dw.frequency << "] ";
+        }
+        cout << endl;
+      } else {
+        cout << "Root not found." << endl;
+      }
     }
 };
 #endif

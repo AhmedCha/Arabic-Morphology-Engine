@@ -12,94 +12,71 @@ using namespace std;
 struct Scheme {
   string name;
   string pattern;
+  vector<string> parsedPattern;
 
-  Scheme(string n, string p) : name(n), pattern(p) {}
+  Scheme() : name(""), pattern("") {}
+
+  // Constructor to auto-parse pattern
+  Scheme(string n, string p) : name(n), pattern(p) {
+    parsePattern();
+  }
+
+  void parsePattern() {
+    parsedPattern.clear();
+    for (size_t i = 0; i < pattern.length();) {
+      unsigned char c = (unsigned char)pattern[i];
+      int len = 1;
+
+      if ((c & 0xE0) == 0xC0) len = 2;
+      else if ((c & 0xF0) == 0xE0) len = 3;
+      else if ((c & 0xF8) == 0xF0) len = 4;
+
+      if (i + len > pattern.length()) len = pattern.length() - i;
+
+      parsedPattern.push_back(pattern.substr(i, len));
+      i += len;
+    }
+  }
 };
 
 class SchemeHashTable {
   private:
-    vector<list<Scheme>> table;
-    int numBuckets;
-    string filename; 
+    static const int TABLE_SIZE = 101;
+    list<Scheme> table[TABLE_SIZE];
 
-    unsigned long hashFunction(const string& key) {
-      unsigned long hash = 5381;
+    int hashFunction(const string& key) {
+      int hash = 0;
       for (char c : key) {
-        hash = ((hash << 5) + hash) + c; 
+        hash = (hash * 31 + c) % TABLE_SIZE;
       }
-      return hash % numBuckets;
-    }
-
-    // Private helper to save data back to the file
-    void saveToFile() {
-      ofstream outFile(filename);
-      if (!outFile.is_open()) {
-        cerr << "Error: Could not open file '" << filename << "' for writing." << endl;
-        return;
-      }
-
-      for (int i = 0; i < numBuckets; i++) {
-        for (const auto& scheme : table[i]) {
-          outFile << scheme.name << " " << scheme.pattern << endl;
-        }
-      }
-      outFile.close();
+      if (hash < 0) hash += TABLE_SIZE;
+      return hash;
     }
 
   public:
-    SchemeHashTable(int buckets = 101) : numBuckets(buckets) {
-      table.resize(numBuckets);
-    }
-
-    // Load schemes from a file initially
-    void loadFromFile(string fname) {
-      filename = fname;
-      ifstream inFile(filename);
-
-      // If file doesn't exist, we will create it later when saving
-      if (!inFile.is_open()) {
-        cout << "Warning: Scheme file '" << filename << "' not found. A new one will be created." << endl;
-        return;
-      }
-
-      string name, pattern;
-      while (inFile >> name >> pattern) {
-        // We use a simplified insert here to avoid re-saving during loading
-        int index = hashFunction(name);
-        table[index].emplace_back(name, pattern);
-      }
-      inFile.close();
-    }
-
-    // Insert or Update a scheme
+    // Combined Logic: Handles New & Edit
     void insert(string name, string pattern) {
       int index = hashFunction(name);
 
-      // Check if updating existing scheme
       for (auto& scheme : table[index]) {
         if (scheme.name == name) {
           scheme.pattern = pattern;
-          saveToFile(); 
-          cout << "Scheme '" << name << "' updated." << endl;
-          return;
+          scheme.parsePattern();
+          return; 
         }
       }
 
-      // Insert new scheme
+      // If not found, add new
       table[index].emplace_back(name, pattern);
-      saveToFile(); 
-      cout << "Scheme '" << name << "' added." << endl;
     }
 
     // Remove a scheme
     void remove(string name) {
       int index = hashFunction(name);
       auto& bucket = table[index];
-
       for (auto it = bucket.begin(); it != bucket.end(); ++it) {
         if (it->name == name) {
           bucket.erase(it);
-          saveToFile(); 
           cout << "Scheme '" << name << "' removed." << endl;
           return;
         }
@@ -119,7 +96,7 @@ class SchemeHashTable {
 
     vector<Scheme> getAllSchemes() {
       vector<Scheme> allSchemes;
-      for (int i = 0; i < numBuckets; i++) {
+      for (int i = 0; i < TABLE_SIZE; i++) {
         for (const auto& scheme : table[i]) {
           allSchemes.push_back(scheme);
         }
@@ -127,14 +104,43 @@ class SchemeHashTable {
       return allSchemes;
     }
 
-    void display() {
-      cout << "\n--- Current Schemes (" << filename << ") ---" << endl;
-      for (int i = 0; i < numBuckets; i++) {
-        for (auto& scheme : table[i]) {
-          cout << "Name: " << scheme.name << " \t Pattern: " << scheme.pattern << endl;
+    void saveToFile(const string& filename) {
+      ofstream outFile(filename);
+      if (!outFile) {
+        cerr << "Error saving schemes." << endl;
+        return;
+      }
+      for (int i = 0; i < TABLE_SIZE; i++) {
+        for (const auto& scheme : table[i]) {
+          outFile << scheme.name << " " << scheme.pattern << endl;
         }
       }
-      cout << "-----------------------------------" << endl;
+      outFile.close();
+      cout << "✔ Schemes saved to file." << endl;
+    }
+
+    void loadFromFile(const string& filename) {
+      ifstream inFile(filename);
+      if (!inFile) return;
+
+      // Clear table before loading
+      for(int i=0; i<TABLE_SIZE; i++) table[i].clear();
+
+      string name, pattern;
+      while (inFile >> name >> pattern) {
+        insert(name, pattern);
+      }
+      inFile.close();
+    }
+
+    void display() {
+      for (int i = 0; i < TABLE_SIZE; i++) {
+        if (!table[i].empty()) {
+          for (const auto& scheme : table[i]) {
+            cout << "- " << scheme.name << ": " << scheme.pattern << endl;
+          }
+        }
+      }
     }
 };
 

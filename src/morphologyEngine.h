@@ -26,41 +26,66 @@ class MorphologyEngine {
       }
       return chars;
     }
-
+ 
   public:
     // GENERATE (Forward): Root + Pattern -> Word
-    static string generate(string root, string pattern) {
+    static string generate(string root, const vector<string>& patChars) {
       vector<string> rootChars = splitUTF8(root);
-      if (rootChars.size() != 3) return "Error: Root must be 3 chars";
-
-      string R1 = rootChars[0];
-      string R2 = rootChars[1];
-      string R3 = rootChars[2];
+      if (rootChars.size() != 3) return "Error";
 
       string result = "";
-      vector<string> patChars = splitUTF8(pattern);
-
       for (const string& ch : patChars) {
-        if (ch == "1") result += R1;
-        else if (ch == "2") result += R2;
-        else if (ch == "3") result += R3;
+        if (ch == "1") result += rootChars[0];
+        else if (ch == "2") result += rootChars[1];
+        else if (ch == "3") result += rootChars[2];
         else result += ch;
       }
       return result;
     }
 
-    // VALIDATE: Check if Word comes from Root using any known Scheme
-    // Tries every scheme in the table to see if 'root' + 'scheme' == 'word'
-    static bool validate(string word, string root, SchemeHashTable& schemes, string& foundSchemeName) {
-      // Get all schemes to test
+    // Generate Family & Update Tree
+    static void generateFamily(string root, AVLTree<string>& tree, SchemeHashTable& schemes) {
+      if (!tree.search(root)) {
+        cout << "✘ Root '" << root << "' not found in Tree." << endl;
+        return;
+      }
+
+      cout << "\n--- Generating Family for Root: " << root << " ---" << endl;
       vector<Scheme> allSchemes = schemes.getAllSchemes();
 
       for (const auto& scheme : allSchemes) {
+        // Use optimized generate with cached pattern
+        string word = generate(root, scheme.parsedPattern);
+
+        cout << "  -> " << scheme.name << ": " << word << endl;
+
+        // CRITICAL: Save back to Tree
+        tree.addDerivedWord(root, word);
+      }
+      cout << "✔ Family generated and saved to tree node." << endl;
+    }
+
+    // VALIDATE: Check if Word comes from Root using any known Scheme
+    // Tries every scheme in the table to see if 'root' + 'scheme' == 'word'
+    static bool validate(string word, string root, SchemeHashTable& schemes, string& foundSchemeName, AVLTree<string>& tree) {
+      vector<Scheme> allSchemes = schemes.getAllSchemes();
+
+      // Basic Length Heuristic (Fail-Fast)
+      size_t wordLen = word.length(); // Byte length, crude but fast filter
+
+      for (const auto& scheme : allSchemes) {
         // Try to generate the word using this specific scheme
-        string prediction = generate(root, scheme.pattern);
+        // (Note: Precise UTF8 length check is expensive, this is a rough byte-check optimization)
+        if (abs((int)scheme.pattern.length() - (int)wordLen) > 6) continue; 
+
+        string prediction = generate(root, scheme.parsedPattern);
 
         if (prediction == word) {
           foundSchemeName = scheme.name;
+          // CRITICAL: Save valid word to Tree
+          if (tree.search(root)) {
+            tree.addDerivedWord(root, word);
+          }
           return true;
         }
       }
