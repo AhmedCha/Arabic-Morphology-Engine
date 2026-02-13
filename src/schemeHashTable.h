@@ -94,6 +94,39 @@ class SchemeHashTable {
       return "";
     }
 
+    vector<Scheme> getSchemesByAddedLength(int extraLengthNeeded) {
+      vector<Scheme> matchingSchemes;
+
+      // Target size of the pattern (e.g. if we need +3 letters, pattern must be 6 chars long)
+      int targetPatternSize = extraLengthNeeded + 3; 
+
+      for (int i = 0; i < TABLE_SIZE; i++) {
+        for (const auto& scheme : table[i]) {
+          if ((int)scheme.parsedPattern.size() == targetPatternSize) {
+            matchingSchemes.push_back(scheme);
+          }
+        }
+      }
+      return matchingSchemes;
+    }
+
+    string getNameByPattern(string patternToFind) {
+      for (int i = 0; i < TABLE_SIZE; i++) {
+        for (const auto& scheme : table[i]) {
+
+          string schemeSignature = "";
+          for(const string& p : scheme.parsedPattern) {
+            schemeSignature += p;
+          }
+
+          if (schemeSignature == patternToFind) {
+            return scheme.name;
+          }
+        }
+      }
+      return "";
+    }
+
     vector<Scheme> getAllSchemes() {
       vector<Scheme> allSchemes;
       for (int i = 0; i < TABLE_SIZE; i++) {

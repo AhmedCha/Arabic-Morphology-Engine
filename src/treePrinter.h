@@ -7,7 +7,7 @@
 
 using namespace std;
 
-// Helper struct to manage the "history" of the indentation
+// Struct to manage the "history" of the indentation
 struct Trunk {
   Trunk *prev;
   string str;

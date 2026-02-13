@@ -231,6 +231,8 @@ template <typename T> class AVLTree {
       return root;
     }
 
+    // function to search for a key in the subtree rooted
+    // with root
     AVLNode<T>* search(AVLNode<T>* node, T key) {
       if (node == nullptr || node->key == key) return node;
       if (key < node->key) return search(node->left, key);
@@ -252,8 +254,6 @@ template <typename T> class AVLTree {
       }
     }
 
-    // function to search for a key in the subtree rooted
-    // with root
     void saveToFileHelper(AVLNode<T>* node, ofstream& file) {
       if (node != nullptr) {
         saveToFileHelper(node->left, file);
@@ -280,6 +280,7 @@ template <typename T> class AVLTree {
     }
 
     ~AVLTree() { clear(root); }
+
     void saveToFile(string fname = "") {
       if (fname != "") filename = fname;
       if (filename.empty()) return; 
@@ -350,7 +351,7 @@ template <typename T> class AVLTree {
       return (search(this->root, key) != nullptr );
     }
 
-    // NEW: Add Derived Word with Frequency Logic
+    // Add Derived Word with Frequency Logic
     void addDerivedWord(T key, string word) {
       AVLNode<T>* node = search(root, key);
       if (node != nullptr) {
@@ -365,6 +366,7 @@ template <typename T> class AVLTree {
       }
     }
 
+    // Show Family
     void showFamily(T key) {
       AVLNode<T>* node = search(root, key);
       if (node) {

@@ -147,8 +147,8 @@ inline void morphologyMenu(AVLTree<string>& tree, SchemeHashTable& schemes) {
     cout << "1. Generate Word (Single)" << endl;
     cout << "2. Validate Word" << endl;
     cout << "3. Detect Root" << endl;
-    cout << "4. Generate Family (All Schemes)" << endl; // NEW
-    cout << "5. View Stored Family of Root" << endl;    // NEW
+    cout << "4. Generate Family (All Schemes)" << endl;
+    cout << "5. View Stored Family of Root" << endl;
     cout << "0. Back" << endl;
     cin >> choice;
 
@@ -159,13 +159,8 @@ inline void morphologyMenu(AVLTree<string>& tree, SchemeHashTable& schemes) {
         cout << "Enter Root: "; cin >> root;
         cout << "Enter Scheme Name: "; cin >> schemeName;
         {
-          // Use optimized get (Scheme object directly?)
-          // For now, get pattern string, we need Scheme object for optimization
-          // Let's keep it simple for single gen, or fetch scheme logic:
           string pattern = schemes.getPattern(schemeName);
-          // We need to re-parse locally if we don't expose Scheme object
-          // Or just use the slower method for single gen (acceptable)
-          // Better:
+
           vector<Scheme> all = schemes.getAllSchemes();
           bool found = false;
           for(auto& s : all) {
@@ -188,6 +183,13 @@ inline void morphologyMenu(AVLTree<string>& tree, SchemeHashTable& schemes) {
           else
             cout << "✘ INVALID" << endl;
         }
+        break;
+
+      case 3: // DETECT ROOT
+        cout << "Enter Word to reverse-engineer: ";
+        cin >> word;
+        // Call the optimized finder you already wrote!
+        MorphologyEngine::findRoot(word, tree, schemes);
         break;
 
       case 4: // FAMILY GENERATION

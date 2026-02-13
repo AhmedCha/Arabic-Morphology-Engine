@@ -11,7 +11,7 @@ using namespace std;
 
 class MorphologyEngine {
   private:
-    // Helper: Splits a UTF-8 string into individual characters
+    // Splits a UTF-8 string into individual characters
     static vector<string> splitUTF8(const string& str) {
       vector<string> chars;
       for (size_t i = 0; i < str.length();) {
@@ -54,41 +54,43 @@ class MorphologyEngine {
       vector<Scheme> allSchemes = schemes.getAllSchemes();
 
       for (const auto& scheme : allSchemes) {
-        // Use optimized generate with cached pattern
         string word = generate(root, scheme.parsedPattern);
-
         cout << "  -> " << scheme.name << ": " << word << endl;
-
-        // CRITICAL: Save back to Tree
         tree.addDerivedWord(root, word);
       }
-      cout << "✔ Family generated and saved to tree node." << endl;
+      cout << "Family generated and saved to tree node." << endl;
+      cout << "\n------------------------------------------------" << endl;
     }
 
     // VALIDATE: Check if Word comes from Root using any known Scheme
     // Tries every scheme in the table to see if 'root' + 'scheme' == 'word'
     static bool validate(string word, string root, SchemeHashTable& schemes, string& foundSchemeName, AVLTree<string>& tree) {
-      vector<Scheme> allSchemes = schemes.getAllSchemes();
+      vector<string> wChars = splitUTF8(word);
+      vector<string> rChars = splitUTF8(root);
 
-      // Basic Length Heuristic (Fail-Fast)
-      size_t wordLen = word.length(); // Byte length, crude but fast filter
+      if (rChars.size() != 3) return false;
 
-      for (const auto& scheme : allSchemes) {
-        // Try to generate the word using this specific scheme
-        // (Note: Precise UTF8 length check is expensive, this is a rough byte-check optimization)
-        if (abs((int)scheme.pattern.length() - (int)wordLen) > 6) continue; 
+      string deducedPattern = "";
+      int rIndex = 0;
 
-        string prediction = generate(root, scheme.parsedPattern);
-
-        if (prediction == word) {
-          foundSchemeName = scheme.name;
-          // CRITICAL: Save valid word to Tree
-          if (tree.search(root)) {
-            tree.addDerivedWord(root, word);
-          }
-          return true;
+      for (const string& wChar : wChars) {
+        if (rIndex < 3 && wChar == rChars[rIndex]) {
+          deducedPattern += to_string(rIndex + 1);
+          rIndex++;
+        } else {
+          deducedPattern += wChar;
         }
       }
+
+      if (rIndex != 3) return false;
+
+      string name = schemes.getNameByPattern(deducedPattern); 
+      if (name != "") {
+        foundSchemeName = name;
+        tree.addDerivedWord(root, word);
+        return true;
+      }
+
       return false;
     }
 
@@ -119,24 +121,34 @@ class MorphologyEngine {
     }
 
     // OPTIMIZED FINDER (Root Detection)
-    static void findRoot(string word, AVLTree<string>& rootsTree, SchemeHashTable& schemesTable) {
-      vector<Scheme> schemes = schemesTable.getAllSchemes();
+    static void findRoot(string word, AVLTree<string>& rootsTree, SchemeHashTable& schemes) {
+      vector<string> wChars = splitUTF8(word);
+      int wordLen = wChars.size();
+      int rootLen = 3; 
+      int requiredAddedLength = wordLen - rootLen;
+      if (requiredAddedLength < 0) {
+        cout << "Word is too short to contain a triliteral root." << endl;
+        return;
+      }
 
-      cout << "Analyzing '" << word << "' against " << schemes.size() << " schemes..." << endl;
+      vector<Scheme> candidates = schemes.getSchemesByAddedLength(requiredAddedLength);
 
       bool matchFound = false;
 
-      for (const auto& scheme : schemes) {
+      cout << "Analyzing word: " << word << "..." << endl;
+
+      for (const auto& scheme : candidates) {
         string candidateRoot = extractRootIfMatches(word, scheme.pattern);
 
         if (candidateRoot != "") {
           if (rootsTree.search(candidateRoot)) {
             cout << "\n------------------------------------------------" << endl;
-            cout << "✔ MATCH FOUND!" << endl;
+            cout << "MATCH FOUND!" << endl;
             cout << "Word:   " << word << endl;
             cout << "Root:   " << candidateRoot  << endl;
             cout << "Scheme: " << scheme.name << " (" << scheme.pattern << ")" << endl;
             cout << "------------------------------------------------\n" << endl;
+
             matchFound = true;
             return; 
           }
@@ -145,7 +157,10 @@ class MorphologyEngine {
 
       if (!matchFound) {
         cout << "\n------------------------------------------------" << endl;
-        cout << "✘ No valid root found in the database." << endl;
+        cout << "No valid root found in the database." << endl;
+        if (candidates.empty()) {
+          cout << "(No schemes found with the correct length configuration)" << endl;
+        }
         cout << "------------------------------------------------\n" << endl;
       }
     }
