@@ -11,6 +11,8 @@ using namespace std;
 
 class MorphologyEngine {
   private:
+ 
+  public:
     // Splits a UTF-8 string into individual characters
     static vector<string> splitUTF8(const string& str) {
       vector<string> chars;
@@ -26,8 +28,7 @@ class MorphologyEngine {
       }
       return chars;
     }
- 
-  public:
+
     // GENERATE (Forward): Root + Pattern -> Word
     static string generate(string root, const vector<string>& patChars) {
       vector<string> rootChars = splitUTF8(root);

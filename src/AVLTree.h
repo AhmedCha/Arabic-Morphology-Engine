@@ -184,12 +184,10 @@ template <typename T> class AVLTree {
         }
 
         else {
-
-          AVLNode<T>* temp
-            = minValueNode(root->right);
+          AVLNode<T>* temp = minValueNode(root->right);
           root->key = temp->key;
-          root->right
-            = deleteNode(root->right, temp->key);
+          root->derivedWords = temp->derivedWords; 
+          root->right = deleteNode(root->right, temp->key);
         }
       }
 

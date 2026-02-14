@@ -8,6 +8,7 @@
 #include "schemeHashTable.h"
 #include "morphologyEngine.h"
 #include "treePrinter.h"
+#include "textAnalyser.h"
 
 using namespace std;
 
@@ -149,6 +150,7 @@ inline void morphologyMenu(AVLTree<string>& tree, SchemeHashTable& schemes) {
     cout << "3. Detect Root" << endl;
     cout << "4. Generate Family (All Schemes)" << endl;
     cout << "5. View Stored Family of Root" << endl;
+    cout << "6. Analyze Text Corpus (Extract Roots & Frequencies)" << endl;
     cout << "0. Back" << endl;
     cin >> choice;
 
@@ -200,6 +202,15 @@ inline void morphologyMenu(AVLTree<string>& tree, SchemeHashTable& schemes) {
       case 5: // VIEW STORED
         cout << "Enter Root: "; cin >> root;
         tree.showFamily(root);
+        break;
+
+      case 6: // CORPUS ANALYSIS
+        {
+          string filename;
+          cout << "Enter the name of the text file (e.g., text.txt): ";
+          cin >> filename;
+          CorpusAnalyzer::analyzeFile(filename, tree, schemes);
+        }
         break;
     }
   }

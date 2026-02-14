@@ -10,16 +10,21 @@ int main(int argc, char* argv[]) {
 
   AVLTree<string> tree;
   SchemeHashTable schemes;
+  string schemeFile;
+  string rootsFile;
 
   // Load Data
   if (argc < 3) {
-    schemes.loadFromFile("schemes.txt");
-    tree.loadFromFile("racines.txt");
+    schemeFile = "schemes.txt";
+    rootsFile = "racines.txt";
     cout << "Loading default files, to load custom files use: " << argv[0] << " <roots_file> <schemes_file>" << endl;
   } else {
-    tree.loadFromFile(argv[1]);
-    schemes.loadFromFile(argv[2]);
+    rootsFile = argv[1];
+    schemeFile = argv[2];
   }
+
+  schemes.loadFromFile(schemeFile);
+  tree.loadFromFile(rootsFile);
 
   int mainChoice;
 
@@ -45,16 +50,14 @@ int main(int argc, char* argv[]) {
       case 1: morphologyMenu(tree, schemes); break;
       case 2: manageRoots(tree); break;
       case 3: manageSchemes(schemes); break;
-      case 0: cout << "Exiting... Goodbye!" << endl; return 0;
-      default: cout << "Invalid selection. Try again." << endl;
+      case 0: 
+              cout << "\nSaving data before exit..." << endl;
+              tree.saveToFile(rootsFile);
+              schemes.saveToFile(schemeFile);
+              cout << "Exiting... Goodbye!" << endl;
+              return 0;
+      default: 
+              cout << "Invalid selection. Try again." << endl;
     }
   }
-
-  // Save on exit
-  cout << "Saving data..." << endl;
-  tree.saveToFile(argv[1]);
-  schemes.saveToFile(argv[2]);
-  cout << "Exiting... Goodbye!" << endl;
-
-  return 0;
 }
