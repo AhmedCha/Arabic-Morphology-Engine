@@ -29,17 +29,45 @@ class MorphologyEngine {
       return chars;
     }
 
+    // HELPER: Normalize Alif variations to bare Alif
+    static string normalizeAlif(const string& c) {
+      if (c == "\u0623" || c == "\u0625" || c == "\u0622") return "\u0627"; 
+      return c;
+    }
+
+    // HELPER: Expand Shadda into two identical letters
+    static vector<string> expandShadda(const vector<string>& chars) {
+      vector<string> expanded;
+      for (const string& c : chars) {
+        if (c == "\u0651") { 
+          if (!expanded.empty()) expanded.push_back(expanded.back()); 
+        } else {
+          expanded.push_back(c);
+        }
+      }
+      return expanded;
+    }
+
     // GENERATE (Forward): Root + Pattern -> Word
     static string generate(string root, const vector<string>& patChars) {
       vector<string> rootChars = splitUTF8(root);
       if (rootChars.size() != 3) return "Error";
 
-      string result = "";
+      vector<string> resChars;
       for (const string& ch : patChars) {
-        if (ch == "1") result += rootChars[0];
-        else if (ch == "2") result += rootChars[1];
-        else if (ch == "3") result += rootChars[2];
-        else result += ch;
+        if (ch == "1") resChars.push_back(rootChars[0]);
+        else if (ch == "2") resChars.push_back(rootChars[1]);
+        else if (ch == "3") resChars.push_back(rootChars[2]);
+        else resChars.push_back(ch);
+      }
+
+      string result = "";
+      for (size_t i = 0; i < resChars.size(); i++) {
+        if (i > 0 && resChars[i] == resChars[i-1]) {
+          result += "\u0651"; // Contract into Shadda
+        } else {
+          result += resChars[i];
+        }
       }
       return result;
     }
@@ -66,7 +94,7 @@ class MorphologyEngine {
     // VALIDATE: Check if Word comes from Root using any known Scheme
     // Tries every scheme in the table to see if 'root' + 'scheme' == 'word'
     static bool validate(string word, string root, SchemeHashTable& schemes, string& foundSchemeName, AVLTree<string>& tree) {
-      vector<string> wChars = splitUTF8(word);
+      vector<string> wChars = expandShadda(splitUTF8(word));
       vector<string> rChars = splitUTF8(root);
 
       if (rChars.size() != 3) return false;
@@ -75,7 +103,7 @@ class MorphologyEngine {
       int rIndex = 0;
 
       for (const string& wChar : wChars) {
-        if (rIndex < 3 && wChar == rChars[rIndex]) {
+        if (rIndex < 3 && normalizeAlif(wChar) == normalizeAlif(rChars[rIndex])) {
           deducedPattern += to_string(rIndex + 1);
           rIndex++;
         } else {
@@ -91,32 +119,27 @@ class MorphologyEngine {
         tree.addDerivedWord(root, word);
         return true;
       }
-
       return false;
     }
 
     // REVERSE ENGINEER helpers
     static string extractRootIfMatches(string word, string pattern) {
-      vector<string> wChars = splitUTF8(word);
+      vector<string> wChars = expandShadda(splitUTF8(word));
       vector<string> pChars = splitUTF8(pattern);
 
-      // Length Check
       if (wChars.size() != pChars.size()) return "";
 
       string r1 = "", r2 = "", r3 = "";
 
-      // Iterate and Compare
       for (size_t i = 0; i < pChars.size(); i++) {
         if (pChars[i] == "1") r1 = wChars[i];
         else if (pChars[i] == "2") r2 = wChars[i];
         else if (pChars[i] == "3") r3 = wChars[i];
         else {
-          // Fixed letter must match exactly
-          if (pChars[i] != wChars[i]) return ""; 
+          if (normalizeAlif(pChars[i]) != normalizeAlif(wChars[i])) return ""; 
         }
       }
 
-      // Return combined root if all placeholders were found
       if (r1 != "" && r2 != "" && r3 != "") return r1 + r2 + r3;
       return "";
     }

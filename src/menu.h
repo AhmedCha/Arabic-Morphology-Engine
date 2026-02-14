@@ -8,7 +8,7 @@
 #include "schemeHashTable.h"
 #include "morphologyEngine.h"
 #include "treePrinter.h"
-#include "textAnalyser.h"
+#include "corpusAnalyzer.h"
 
 using namespace std;
 
@@ -207,9 +207,22 @@ inline void morphologyMenu(AVLTree<string>& tree, SchemeHashTable& schemes) {
       case 6: // CORPUS ANALYSIS
         {
           string filename;
+          int modeChoice;
+
           cout << "Enter the name of the text file (e.g., text.txt): ";
           cin >> filename;
-          CorpusAnalyzer::analyzeFile(filename, tree, schemes);
+
+          // Ask the user for the mode
+          cout << "\n--- ANALYSIS MODE ---" << endl;
+          cout << "1. Strict Mode (Only attach to EXISTING roots in database)" << endl;
+          cout << "2. Discovery Mode (Guess and add NEW roots automatically)" << endl;
+          cout << "Choice: ";
+          cin >> modeChoice;
+
+          bool strictMode = (modeChoice == 1);
+
+          // Pass the choice into your updated function
+          corpusAnalyzer::analyzeFile(filename, tree, schemes, strictMode);
         }
         break;
     }

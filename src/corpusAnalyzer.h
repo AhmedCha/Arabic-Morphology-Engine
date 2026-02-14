@@ -11,7 +11,7 @@
 
 using namespace std;
 
-class CorpusAnalyzer {
+class corpusAnalyzer {
 private:
   // Basic helper to strip standard punctuation from the start/end of a word
   static string cleanWord(const string& word) {
@@ -19,31 +19,34 @@ private:
 
     // List of common Arabic diacritics (Tashkeel) and Tatweel to filter out
     const vector<string> diacritics = {
-      "\u064B", 
-      "\u064C", 
-      "\u064D", 
-      "\u064E", 
-      "\u064F", 
-      "\u0650", 
-      "\u0651", 
-      "\u0652", 
-      "\u0640", 
-      "\u202B", 
-      "\u202C", 
-      "\u200E", 
-      "\u200F", 
-      "\u202A", 
-      "\u202D", 
-      "\u202E"  
+      // Diacritics
+      "\u064B", "\u064C", "\u064D", "\u064E", 
+      "\u064F", "\u0650", "\u0652", "\u0640", 
+      // BiDi Marks
+      "\u202B", "\u202C", "\u200E", "\u200F", "\u202A", "\u202D", "\u202E",
+      // Arabic Punctuation
+      "\u060C", "\u061B", "\u061F", "\u00AB", "\u00BB",
+      // Western Numbers (Just in case they bypassed the 1-byte wall)
+      "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+      // Eastern Arabic Numerals
+      "\u0660", "\u0661", "\u0662", "\u0663", "\u0664", 
+      "\u0665", "\u0666", "\u0667", "\u0668", "\u0669",
+      // Persian/Urdu Numerals
+      "\u06F0", "\u06F1", "\u06F2", "\u06F3", "\u06F4", 
+      "\u06F5", "\u06F6", "\u06F7", "\u06F8", "\u06F9"
     };
 
     vector<string> chars = MorphologyEngine::splitUTF8(word);
 
     for (const string& c : chars) {
       // Filter standard ASCII punctuation
-      if (c.length() == 1 && ispunct(c[0])) {
-        continue; 
-      }
+      if (c.length() == 1) {
+            char asciiChar = c[0];
+            if (isdigit(asciiChar) || ispunct(asciiChar) || asciiChar == ' ') {
+                continue;
+            }
+            continue;
+        }
 
       // Filter Arabic diacritics
       bool isDiacritic = false;
@@ -76,7 +79,7 @@ private:
   }
 
 public:
-  static void analyzeFile(const string& filename, AVLTree<string>& tree, SchemeHashTable& schemes) {
+  static void analyzeFile(const string& filename, AVLTree<string>& tree, SchemeHashTable& schemes, bool strictMode) {
     string fileToProcess = filename;
     bool isTempFile = false;
 
@@ -126,24 +129,32 @@ public:
 
       if (diff < 0) continue;
 
-      // Fetch only schemes that match the required length addition
       vector<Scheme> candidates = schemes.getSchemesByAddedLength(diff);
 
       for (const auto& scheme : candidates) {
-        // Try to extract the root based on the scheme
         string candidateRoot = MorphologyEngine::extractRootIfMatches(word, scheme.pattern);
 
         if (candidateRoot != "") {
+          bool rootExists = tree.search(candidateRoot);
 
-          if (!tree.search(candidateRoot)) {
-            tree.insert(candidateRoot);
-            newRootsFound++;
+          // Check strictMode before inserting
+          if (strictMode) {
+            // Strict Mode: Only add if the root is already known in the database
+            if (rootExists) {
+              tree.addDerivedWord(candidateRoot, word);
+              derivedWordsLogged++;
+              break; 
+            }
+          } else {
+            // Discovery Mode: Add root if missing, then add the word
+            if (!rootExists) {
+              tree.insert(candidateRoot);
+              newRootsFound++;
+            }
+            tree.addDerivedWord(candidateRoot, word);
+            derivedWordsLogged++;
+            break; 
           }
-
-          tree.addDerivedWord(candidateRoot, word);
-          derivedWordsLogged++;
-
-          break; 
         }
       }
     }
