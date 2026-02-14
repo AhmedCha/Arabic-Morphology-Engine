@@ -7,6 +7,8 @@
 #include <list>
 #include <fstream>
 
+#include "language.h"
+
 using namespace std;
 
 struct Scheme {
@@ -77,11 +79,15 @@ class SchemeHashTable {
       for (auto it = bucket.begin(); it != bucket.end(); ++it) {
         if (it->name == name) {
           bucket.erase(it);
-          cout << "Scheme '" << name << "' removed." << endl;
+          cout << Tr("Scheme '", "Schème '", "تم حذف الوزن '") 
+               << name 
+               << Tr("' removed.", "' supprimé.", "'") << endl;
           return;
         }
       }
-      cout << "Error: Scheme '" << name << "' not found." << endl;
+      cout << Tr("Error: Scheme '", "Erreur : Schème '", "خطأ: الوزن '") 
+           << name 
+           << Tr("' not found.", "' introuvable.", "' غير موجود.") << endl;
     }
 
     string getPattern(string name) {
@@ -140,7 +146,9 @@ class SchemeHashTable {
     void saveToFile(const string& filename) {
       ofstream outFile(filename);
       if (!outFile) {
-        cerr << "Error saving schemes." << endl;
+        cerr << Tr("Error saving schemes.", 
+                   "Erreur lors de la sauvegarde des schèmes.", 
+                   "خطأ في حفظ الأوزان.") << endl;
         return;
       }
       for (int i = 0; i < TABLE_SIZE; i++) {
@@ -149,7 +157,9 @@ class SchemeHashTable {
         }
       }
       outFile.close();
-      cout << "✔ Schemes saved to file." << endl;
+      cout << Tr("✔ Schemes saved to file.", 
+                 "✔ Schèmes sauvegardés dans le fichier.", 
+                 "✔ تم حفظ الأوزان في الملف.") << endl;
     }
 
     void loadFromFile(const string& filename) {
@@ -170,7 +180,7 @@ class SchemeHashTable {
       for (int i = 0; i < TABLE_SIZE; i++) {
         if (!table[i].empty()) {
           for (const auto& scheme : table[i]) {
-            cout << "- " << scheme.name << ": " << scheme.pattern << endl;
+            cout << "  - " << scheme.name << ": " << scheme.pattern << endl;
           }
         }
       }

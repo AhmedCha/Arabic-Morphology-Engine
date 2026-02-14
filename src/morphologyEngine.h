@@ -4,14 +4,14 @@
 #include <iostream>
 #include <string>
 #include <vector>
+
 #include "AVLTree.h"
 #include "schemeHashTable.h" 
+#include "language.h" 
 
 using namespace std;
 
 class MorphologyEngine {
-  private:
- 
   public:
     // Splits a UTF-8 string into individual characters
     static vector<string> splitUTF8(const string& str) {
@@ -75,24 +75,27 @@ class MorphologyEngine {
     // Generate Family & Update Tree
     static void generateFamily(string root, AVLTree<string>& tree, SchemeHashTable& schemes) {
       if (!tree.search(root)) {
-        cout << "✘ Root '" << root << "' not found in Tree." << endl;
+        cout << Tr("✘ Root '", "✘ Racine '", "✘ الجذر '") << root << Tr("' not found in Tree.", "' introuvable dans l'arbre.", "' غير موجود في الشجرة.") << endl;
         return;
       }
 
-      cout << "\n--- Generating Family for Root: " << root << " ---" << endl;
+      cout << "\n  +================================================+" << endl;
+      cout << "  |  >> " << Tr("GENERATING FAMILY FOR: ", "GÉNÉRATION DE LA FAMILLE : ", "توليد العائلة للجذر: ") << root << endl;
+      cout << "  +================================================+\n" << endl;
+      
       vector<Scheme> allSchemes = schemes.getAllSchemes();
 
       for (const auto& scheme : allSchemes) {
         string word = generate(root, scheme.parsedPattern);
-        cout << "  -> " << scheme.name << ": " << word << endl;
+        cout << "    -> " << scheme.name << ": " << word << endl;
         tree.addDerivedWord(root, word);
       }
-      cout << "Family generated and saved to tree node." << endl;
-      cout << "\n------------------------------------------------" << endl;
+      
+      cout << "\n  " << Tr("✔ Family generated and saved to tree node.", "✔ Famille générée et sauvegardée.", "✔ تم توليد العائلة وحفظها بنجاح.") << endl;
+      cout << "  +================================================+\n" << endl;
     }
 
     // VALIDATE: Check if Word comes from Root using any known Scheme
-    // Tries every scheme in the table to see if 'root' + 'scheme' == 'word'
     static bool validate(string word, string root, SchemeHashTable& schemes, string& foundSchemeName, AVLTree<string>& tree) {
       vector<string> wChars = expandShadda(splitUTF8(word));
       vector<string> rChars = splitUTF8(root);
@@ -150,28 +153,29 @@ class MorphologyEngine {
       int wordLen = wChars.size();
       int rootLen = 3; 
       int requiredAddedLength = wordLen - rootLen;
+      
       if (requiredAddedLength < 0) {
-        cout << "Word is too short to contain a triliteral root." << endl;
+        cout << Tr("Word is too short to contain a triliteral root.", "Le mot est trop court pour contenir une racine trilitère.", "الكلمة قصيرة جداً لاحتواء جذر ثلاثي.") << endl;
         return;
       }
 
       vector<Scheme> candidates = schemes.getSchemesByAddedLength(requiredAddedLength);
-
       bool matchFound = false;
 
-      cout << "Analyzing word: " << word << "..." << endl;
+      cout << Tr("Analyzing word: ", "Analyse du mot : ", "جاري تحليل الكلمة: ") << word << "..." << endl;
 
       for (const auto& scheme : candidates) {
         string candidateRoot = extractRootIfMatches(word, scheme.pattern);
 
         if (candidateRoot != "") {
           if (rootsTree.search(candidateRoot)) {
-            cout << "\n------------------------------------------------" << endl;
-            cout << "MATCH FOUND!" << endl;
-            cout << "Word:   " << word << endl;
-            cout << "Root:   " << candidateRoot  << endl;
-            cout << "Scheme: " << scheme.name << " (" << scheme.pattern << ")" << endl;
-            cout << "------------------------------------------------\n" << endl;
+            cout << "\n  +================================================+" << endl;
+            cout << "  |  >> " << Tr("MATCH FOUND!", "CORRESPONDANCE TROUVÉE !", "تم العثور على تطابق!") << endl;
+            cout << "  +================================================+" << endl;
+            cout << "    " << Tr("Word:   ", "Mot :   ", "الكلمة: ") << word << endl;
+            cout << "    " << Tr("Root:   ", "Racine: ", "الجذر : ") << candidateRoot  << endl;
+            cout << "    " << Tr("Scheme: ", "Schème: ", "الوزن : ") << scheme.name << " (" << scheme.pattern << ")" << endl;
+            cout << "  +================================================+\n" << endl;
 
             matchFound = true;
             return; 
@@ -180,17 +184,16 @@ class MorphologyEngine {
       }
 
       if (!matchFound) {
-        cout << "\n------------------------------------------------" << endl;
-        cout << "No valid root found in the database." << endl;
+        cout << "\n  +================================================+" << endl;
+        cout << "  |  " << Tr("No valid root found in the database.", "Aucune racine valide trouvée dans la base.", "لم يتم العثور على جذر صالح في قاعدة البيانات.") << endl;
         if (candidates.empty()) {
-          cout << "(No schemes found with the correct length configuration)" << endl;
+          cout << "  |  " << Tr("(No schemes found with the correct length)", "(Aucun schème trouvé avec la bonne longueur)", "(لم يتم العثور على أوزان بالطول المطلوب)") << endl;
         }
-        cout << "------------------------------------------------\n" << endl;
+        cout << "  +================================================+\n" << endl;
       }
     }
 
     // PATTERN AUTO-GENERATOR
-    // Converts standard Arabic names (using ف, ع, ل) into patterns (1, 2, 3)
     static string derivePatternFromName(string name) {
       vector<string> chars = splitUTF8(name);
       string pattern = "";

@@ -5,9 +5,11 @@
 #include <fstream>
 #include <string>
 #include <vector>
+
 #include "AVLTree.h"
 #include "schemeHashTable.h"
 #include "morphologyEngine.h"
+#include "language.h" 
 
 using namespace std;
 
@@ -45,7 +47,6 @@ private:
             if (isdigit(asciiChar) || ispunct(asciiChar) || asciiChar == ' ') {
                 continue;
             }
-            continue;
         }
 
       // Filter Arabic diacritics
@@ -85,28 +86,34 @@ public:
 
     // DETECT FILE TYPE
     if (isPDF(filename)) {
-      cout << "ℹ PDF detected. Converting to plain text..." << endl;
+      cout << Tr("ℹ PDF detected. Converting to plain text...", 
+                 "ℹ PDF détecté. Conversion en texte brut...", 
+                 "ℹ تم اكتشاف ملف PDF. جاري التحويل إلى نص عادي...") << endl;
       fileToProcess = "temp_corpus_extracted.txt";
 
       // CONVERT PDF TO TXT USING SYSTEM COMMAND
-      // Linux: usually pre-installed or 'sudo apt install poppler-utils'
-      // Windows: Download Xpdf tools and add to PATH.
       string command = "pdftotext -enc UTF-8 \"" + filename + "\" \"" + fileToProcess + "\"";
 
       int result = system(command.c_str());
       if (result != 0) {
-        cerr << "✘ Error: Failed to convert PDF. Ensure 'pdftotext' is installed." << endl;
+        cerr << Tr("✘ Error: Failed to convert PDF. Ensure 'pdftotext' is installed.", 
+                   "✘ Erreur : Échec de la conversion du PDF. Assurez-vous que 'pdftotext' est installé.", 
+                   "✘ خطأ: فشل تحويل PDF. تأكد من تثبيت 'pdftotext'.") << endl;
         return;
       }
       isTempFile = true;
     } else {
-      cout << "ℹ Plain text file detected." << endl;
+      cout << Tr("ℹ Plain text file detected.", 
+                 "ℹ Fichier texte brut détecté.", 
+                 "ℹ تم اكتشاف ملف نص عادي.") << endl;
     }
 
     // READ THE TEXT FILE
     ifstream file(fileToProcess);
     if (!file.is_open()) {
-      cerr << "✘ Error: Could not open corpus file: " << fileToProcess << endl;
+      cerr << Tr("✘ Error: Could not open corpus file: ", 
+                 "✘ Erreur : Impossible d'ouvrir le fichier de corpus : ", 
+                 "✘ خطأ: تعذر فتح ملف المتن: ") << fileToProcess << endl;
       return;
     }
 
@@ -115,7 +122,7 @@ public:
     int newRootsFound = 0;
     int derivedWordsLogged = 0;
 
-    cout << "Analyzing corpus: " << filename << "..." << endl;
+    cout << Tr("Analyzing corpus: ", "Analyse du corpus : ", "جاري تحليل المتن: ") << filename << "..." << endl;
 
     while (file >> rawWord) {
       string word = cleanWord(rawWord);
@@ -164,14 +171,14 @@ public:
       remove(fileToProcess.c_str());
     }
 
-    // Print Summary Report
-    cout << "\n========================================" << endl;
-    cout << "       CORPUS ANALYSIS COMPLETE" << endl;
-    cout << "========================================" << endl;
-    cout << "Words Processed:     " << totalWordsProcessed << endl;
-    cout << "Derived Words Found: " << derivedWordsLogged << endl;
-    cout << "New Roots Extracted: " << newRootsFound << endl;
-    cout << "========================================\n" << endl;
+    // Print Summary Report (Translated and Styled)
+    cout << "\n  +================================================+" << endl;
+    cout << "  |  >> " << Tr("CORPUS ANALYSIS COMPLETE", "ANALYSE DU CORPUS TERMINÉE", "اكتمل تحليل المتن") << endl;
+    cout << "  +================================================+" << endl;
+    cout << "    " << Tr("Words Processed:     ", "Mots Traités :       ", "الكلمات المعالجة:     ") << totalWordsProcessed << endl;
+    cout << "    " << Tr("Derived Words Found: ", "Mots Dérivés Trouvés:", "الكلمات المشتقة:      ") << derivedWordsLogged << endl;
+    cout << "    " << Tr("New Roots Extracted: ", "Nouvelles Racines :  ", "الجذور الجديدة:       ") << newRootsFound << endl;
+    cout << "  +================================================+\n" << endl;
   }
 };
 

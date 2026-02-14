@@ -1,4 +1,4 @@
-// Code from https://www.geeksforgeeks.org/cpp/cpp-program-to-implement-avl-tree/
+// Code inspired from https://www.geeksforgeeks.org/cpp/cpp-program-to-implement-avl-tree/
 
 #ifndef AVLTREE_H  
 #define AVLTREE_H 
@@ -9,6 +9,8 @@
 #include <vector>
 #include <sstream>
 #include <string>
+
+#include "language.h" 
 
 using namespace std;
 
@@ -285,12 +287,15 @@ template <typename T> class AVLTree {
 
       ofstream file(filename);
       if (!file.is_open()) {
-        cerr << "Error: Could not open file '" << filename << "'." << endl;
+        cerr << Tr("✘ Error: Could not open file '", "✘ Erreur : Impossible d'ouvrir le fichier '", "✘ خطأ: تعذر فتح الملف '") 
+             << filename << "'." << endl;
         return;
       }
       saveToFileHelper(root, file);
       file.close();
-      cout << "Saved roots and derived families to " << filename << endl;
+      cout << Tr("✔ Saved roots and derived families to ", 
+                 "✔ Racines et familles dérivées sauvegardées dans ", 
+                 "✔ تم حفظ الجذور والعائلات المشتقة في ") << filename << endl;
     }
 
     void loadFromFile(string fname) {
@@ -298,7 +303,9 @@ template <typename T> class AVLTree {
       ifstream file(filename);
 
       if (!file.is_open()) {
-        cout << "Warning: Scheme file '" << filename << "' not found. A new one will be created." << endl;
+        cout << Tr("⚠ Warning: Roots file '", "⚠ Attention : Fichier de racines '", "⚠ تحذير: ملف الجذور '") 
+             << filename 
+             << Tr("' not found. A new one will be created.", "' introuvable. Un nouveau sera créé.", "' غير موجود. سيتم إنشاء ملف جديد.") << endl;
         return;
       }
 
@@ -328,6 +335,19 @@ template <typename T> class AVLTree {
       file.close();
     }
 
+    void collectAll(AVLNode<T>* node, vector<T>& result) const {
+      if (node == nullptr) return;
+      collectAll(node->left, result);
+      result.push_back(node->key); 
+      collectAll(node->right, result);
+    }
+
+    vector<T> getAllElements() const {
+      vector<T> res;
+      collectAll(root, res);
+      return res;
+    }
+
     // Function to insert a key into the AVL tree
     void insert(T key) {
       root = insert(root, key);
@@ -345,6 +365,7 @@ template <typename T> class AVLTree {
       inorder(root);
       cout << endl;
     }
+    
     bool search(T key) {
       return (search(this->root, key) != nullptr );
     }
@@ -364,18 +385,26 @@ template <typename T> class AVLTree {
       }
     }
 
-    // Show Family
+    // Show Family (Translated and Styled!)
     void showFamily(T key) {
       AVLNode<T>* node = search(root, key);
+      
+      cout << "\n  +================================================+" << endl;
       if (node) {
-        cout << "Family for '" << key << "': ";
-        for (auto& dw : node->derivedWords) {
-          cout << "[" << dw.word << ": " << dw.frequency << "] ";
+        cout << "  |  >> " << Tr("FAMILY FOR ROOT: ", "FAMILLE POUR LA RACINE : ", "عائلة الجذر: ") << key << endl;
+        cout << "  +================================================+" << endl;
+        
+        if (node->derivedWords.empty()) {
+             cout << "    " << Tr("(No derived words found)", "(Aucun mot dérivé trouvé)", "(لم يتم العثور على كلمات مشتقة)") << endl;
+        } else {
+            for (auto& dw : node->derivedWords) {
+              cout << "    - " << dw.word << " " << Tr("(Freq: ", "(Fréq : ", "(التكرار: ") << dw.frequency << ")" << endl;
+            }
         }
-        cout << endl;
       } else {
-        cout << "Root not found." << endl;
+        cout << "  |  " << Tr("✘ Root '", "✘ Racine '", "✘ الجذر '") << key << Tr("' not found.", "' introuvable.", "' غير موجود.") << endl;
       }
+      cout << "  +================================================+\n" << endl;
     }
 };
 #endif

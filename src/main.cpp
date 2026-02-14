@@ -1,6 +1,9 @@
 #include <iostream>
 #include <string>
+#include <vector>
+
 #include "AVLTree.h"
+#include "language.h"
 #include "schemeHashTable.h"
 #include "menu.h"
 
@@ -8,16 +11,25 @@ using namespace std;
 
 int main(int argc, char* argv[]) {
 
+  // Ask for language immediately so even the loading screen is translated!
+  chooseLanguage();
+  clearScreen();
+
   AVLTree<string> tree;
   SchemeHashTable schemes;
   string schemeFile;
   string rootsFile;
 
   // Load Data
+  printAsciiHeader(Tr("SYSTEM INITIALIZATION", "INITIALISATION DU SYSTÈME", "تهيئة النظام"));
+
   if (argc < 3) {
     schemeFile = "schemes.txt";
     rootsFile = "racines.txt";
-    cout << "Loading default files, to load custom files use: " << argv[0] << " <roots_file> <schemes_file>" << endl;
+    cout << Tr("Loading default files. To load custom files use: ", 
+               "Chargement des fichiers par défaut. Pour fichiers personnalisés: ", 
+               "جاري تحميل الملفات الافتراضية. لتحميل ملفات مخصصة استخدم: ") 
+         << argv[0] << " <roots_file> <schemes_file>\n" << endl;
   } else {
     rootsFile = argv[1];
     schemeFile = argv[2];
@@ -26,38 +38,48 @@ int main(int argc, char* argv[]) {
   schemes.loadFromFile(schemeFile);
   tree.loadFromFile(rootsFile);
 
-  int mainChoice;
+  cout << Tr("\nInitialization complete.", "\nInitialisation terminée.", "\nاكتملت التهيئة.") << endl;
+  pauseScreen(); // Make sure they can read the loading messages
 
   while (true) {
-    cout << "\n========================================" << endl;
-    cout << "   ARABIC MORPHOLOGY SYSTEM" << endl;
-    cout << "========================================" << endl;
-    cout << "1. Morphology Operations (Generate/Validate)" << endl;
-    cout << "2. Manage Roots (Add/Edit/Delete)" << endl;
-    cout << "3. Manage Schemes (Add/Edit/Delete)" << endl;
-    cout << "0. Exit" << endl;
-    cout << "========================================" << endl;
-    cout << "Select Option: ";
-    cin >> mainChoice;
+    // We define this INSIDE the loop so if they change the language, 
+    // the vector instantly updates on the next menu load!
+    vector<string> mainOptions = {
+      Tr("Morphology Operations", "Opérations Morphologiques", "العمليات الصرفية"),
+      Tr("Manage Roots", "Gérer les Racines", "إدارة الجذور"),
+      Tr("Manage Schemes", "Gérer les Schèmes", "إدارة الأوزان"),
+      Tr("Change Language", "Changer de Langue", "تغيير اللغة"),
+      Tr("Save Data & Exit", "Sauvegarder et Quitter", "حفظ البيانات والخروج")
+    };
 
-    if (cin.fail()) {
-      cin.clear();
-      cin.ignore(10000, '\n');
-      mainChoice = -1;
-    }
+    int mainChoice = showInteractiveMenu(Tr("ARABIC MORPHOLOGY SYSTEM", "SYSTÈME DE MORPHOLOGIE ARABE", "نظام الصرف العربي"), mainOptions);
+
+    clearScreen(); 
 
     switch (mainChoice) {
-      case 1: morphologyMenu(tree, schemes); break;
-      case 2: manageRoots(tree); break;
-      case 3: manageSchemes(schemes); break;
       case 0: 
-              cout << "\nSaving data before exit..." << endl;
-              tree.saveToFile(rootsFile);
-              schemes.saveToFile(schemeFile);
-              cout << "Exiting... Goodbye!" << endl;
-              return 0;
-      default: 
-              cout << "Invalid selection. Try again." << endl;
+        morphologyMenu(tree, schemes); 
+        break;
+      case 1: 
+        manageRoots(tree); 
+        break;
+      case 2: 
+        manageSchemes(schemes); 
+        break;
+      case 3: // Change Language on the fly!
+        chooseLanguage();
+        break;
+      case 4: // Exit
+        printAsciiHeader(Tr("SAVING DATA & EXITING...", "SAUVEGARDE ET FERMETURE...", "جاري حفظ البيانات والخروج..."));
+        
+        cout << Tr("Saving roots to ", "Sauvegarde des racines dans ", "جاري حفظ الجذور في ") << rootsFile << "..." << endl;
+        tree.saveToFile(rootsFile);
+        
+        cout << Tr("Saving schemes to ", "Sauvegarde des schèmes dans ", "جاري حفظ الأوزان في ") << schemeFile << "..." << endl;
+        schemes.saveToFile(schemeFile);
+        
+        cout << Tr("\nExiting... Goodbye!", "\nFermeture... Au revoir!", "\nجاري الخروج... وداعاً!") << endl;
+        return 0;
     }
   }
 }

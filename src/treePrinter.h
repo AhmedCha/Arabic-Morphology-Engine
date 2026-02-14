@@ -3,7 +3,9 @@
 
 #include <iostream>
 #include <string>
+
 #include "AVLTree.h"
+#include "language.h" 
 
 using namespace std;
 
@@ -73,13 +75,19 @@ class TreePrinter {
   public:
     template <typename T>
       static void print(AVLTree<T>& tree) {
+        cout << "\n  +================================================+" << endl;
+        cout << "  |  >> " << Tr("TREE VISUALIZATION", "VISUALISATION DE L'ARBRE", "عرض الشجرة") << endl;
+        cout << "  +================================================+\n" << endl;
+
         if (tree.getRoot() == nullptr) {
-          cout << "(Empty Tree)" << endl;
+          cout << "    " << Tr("(Empty Tree)", "(Arbre vide)", "(شجرة فارغة)") << endl;
+          cout << "\n  +================================================+\n" << endl;
           return;
         }
-        cout << "\n";
+
         printTree(tree.getRoot(), nullptr, false);
-        cout << "\n";
+
+        cout << "\n  +================================================+\n" << endl;
       }
 };
 
