@@ -1,13 +1,10 @@
 #ifndef SCHEME_HASHTABLE_H
 #define SCHEME_HASHTABLE_H
 
-#include <iostream>
 #include <string>
 #include <vector>
 #include <list>
 #include <fstream>
-
-#include "language.h"
 
 using namespace std;
 
@@ -46,7 +43,7 @@ class SchemeHashTable {
     static const int TABLE_SIZE = 101;
     list<Scheme> table[TABLE_SIZE];
 
-    int hashFunction(const string& key) {
+    int hashFunction(const string& key) const {
       int hash = 0;
       for (char c : key) {
         hash = (hash * 31 + c) % TABLE_SIZE;
@@ -57,7 +54,7 @@ class SchemeHashTable {
 
   public:
     // Combined Logic: Handles New & Edit
-    void insert(string name, string pattern) {
+    void insert(const string& name, const string& pattern) {
       int index = hashFunction(name);
 
       for (auto& scheme : table[index]) {
@@ -72,27 +69,22 @@ class SchemeHashTable {
       table[index].emplace_back(name, pattern);
     }
 
-    // Remove a scheme
-    void remove(string name) {
+    // Remove a scheme. Returns true if removed, false if not found.
+    bool remove(const string& name) {
       int index = hashFunction(name);
       auto& bucket = table[index];
       for (auto it = bucket.begin(); it != bucket.end(); ++it) {
         if (it->name == name) {
           bucket.erase(it);
-          cout << Tr("Scheme '", "Schème '", "تم حذف الوزن '") 
-               << name 
-               << Tr("' removed.", "' supprimé.", "'") << endl;
-          return;
+          return true;
         }
       }
-      cout << Tr("Error: Scheme '", "Erreur : Schème '", "خطأ: الوزن '") 
-           << name 
-           << Tr("' not found.", "' introuvable.", "' غير موجود.") << endl;
+      return false;
     }
 
-    string getPattern(string name) {
+    string getPattern(const string& name) const {
       int index = hashFunction(name);
-      for (auto& scheme : table[index]) {
+      for (const auto& scheme : table[index]) {
         if (scheme.name == name) {
           return scheme.pattern;
         }
@@ -100,7 +92,7 @@ class SchemeHashTable {
       return "";
     }
 
-    vector<Scheme> getSchemesByAddedLength(int extraLengthNeeded) {
+    vector<Scheme> getSchemesByAddedLength(int extraLengthNeeded) const {
       vector<Scheme> matchingSchemes;
 
       // Target size of the pattern (e.g. if we need +3 letters, pattern must be 6 chars long)
@@ -116,7 +108,7 @@ class SchemeHashTable {
       return matchingSchemes;
     }
 
-    string getNameByPattern(string patternToFind) {
+    string getNameByPattern(const string& patternToFind) const {
       for (int i = 0; i < TABLE_SIZE; i++) {
         for (const auto& scheme : table[i]) {
 
@@ -133,7 +125,7 @@ class SchemeHashTable {
       return "";
     }
 
-    vector<Scheme> getAllSchemes() {
+    vector<Scheme> getAllSchemes() const {
       vector<Scheme> allSchemes;
       for (int i = 0; i < TABLE_SIZE; i++) {
         for (const auto& scheme : table[i]) {
@@ -143,13 +135,11 @@ class SchemeHashTable {
       return allSchemes;
     }
 
-    void saveToFile(const string& filename) {
+    // Returns true if successful, false otherwise
+    bool saveToFile(const string& filename) const {
       ofstream outFile(filename);
       if (!outFile) {
-        cerr << Tr("Error saving schemes.", 
-                   "Erreur lors de la sauvegarde des schèmes.", 
-                   "خطأ في حفظ الأوزان.") << endl;
-        return;
+        return false;
       }
       for (int i = 0; i < TABLE_SIZE; i++) {
         for (const auto& scheme : table[i]) {
@@ -157,14 +147,13 @@ class SchemeHashTable {
         }
       }
       outFile.close();
-      cout << Tr("✔ Schemes saved to file.", 
-                 "✔ Schèmes sauvegardés dans le fichier.", 
-                 "✔ تم حفظ الأوزان في الملف.") << endl;
+      return true;
     }
 
-    void loadFromFile(const string& filename) {
+    // Returns true if successful, false otherwise
+    bool loadFromFile(const string& filename) {
       ifstream inFile(filename);
-      if (!inFile) return;
+      if (!inFile) return false;
 
       // Clear table before loading
       for(int i=0; i<TABLE_SIZE; i++) table[i].clear();
@@ -174,16 +163,7 @@ class SchemeHashTable {
         insert(name, pattern);
       }
       inFile.close();
-    }
-
-    void display() {
-      for (int i = 0; i < TABLE_SIZE; i++) {
-        if (!table[i].empty()) {
-          for (const auto& scheme : table[i]) {
-            cout << "  - " << scheme.name << ": " << scheme.pattern << endl;
-          }
-        }
-      }
+      return true;
     }
 };
 
