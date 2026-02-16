@@ -15,7 +15,7 @@
 #include <QRegularExpression>
 #include <QInputDialog>
 #include <QApplication>
-#include <QActionGroup> // <-- Added to fix the incomplete type error
+#include <QActionGroup>
 
 MainWindow::MainWindow(AVLTree<std::string>* tree, SchemeHashTable* schemes, QWidget *parent)
   : QMainWindow(parent), m_tree(tree), m_schemes(schemes) 
@@ -60,7 +60,7 @@ void MainWindow::promptInitialLanguage() {
     else if (choice == "العربية") setGlobalLanguage(2);
     else setGlobalLanguage(0);
   } else {
-    setGlobalLanguage(0); // Default to English if they cancel
+    setGlobalLanguage(0);
   }
 }
 
@@ -81,8 +81,8 @@ void MainWindow::setGlobalLanguage(int langIndex) {
 
   // Broadcast the language change to all tabs directly as integers
   morphologyTab->setLanguage(langIndex);
-  rootsTab->setLanguage(langIndex);    // <-- Fixed
-  schemesTab->setLanguage(langIndex);  // <-- Fixed
+  rootsTab->setLanguage(langIndex);
+  schemesTab->setLanguage(langIndex);
   corpusTab->setLanguage(langIndex);
 }
 

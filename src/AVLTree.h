@@ -214,7 +214,8 @@ template <typename T> class AVLTree {
       if (node) {
         exportCSVHelper(node->left.get(), file);
         for(const auto& dw : node->derivedWords) {
-          file << node->key << "," << dw.word << "," << dw.frequency << "\n";
+          // Wrap strings in double quotes to safely handle any rogue commas
+          file << "\"" << node->key << "\",\"" << dw.word << "\"," << dw.frequency << "\n"; 
         }
         exportCSVHelper(node->right.get(), file);
       }

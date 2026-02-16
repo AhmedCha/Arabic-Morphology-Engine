@@ -104,7 +104,7 @@ class RootsTab : public QWidget {
 
     void drawNode(AVLNode<std::string>* node, double x, double y, double hSpacing) {
       if (!node) return;
-      double vSpacing = 120.0; 
+      double vSpacing = 60.0; 
       double nodeWidth = 90.0; 
       double nodeHeight = 55.0;
 

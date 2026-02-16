@@ -36,16 +36,7 @@ class MorphologyEngine {
     }
 
     static int utf8_length(string_view str) {
-      int len = 0;
-      for (size_t i = 0; i < str.length();) {
-        unsigned char c = str[i]; 
-        if ((c & 0xE0) == 0xC0) i += 2;
-        else if ((c & 0xF0) == 0xE0) i += 3;
-        else if ((c & 0xF8) == 0xF0) i += 4;
-        else i += 1;
-        len++;
-      }
-      return len;
+      return splitUTF8(str).size();
     }
 
     // Splits a UTF-8 string into individual characters safely
@@ -69,7 +60,16 @@ class MorphologyEngine {
 
     // HELPER: Normalize Alif variations to bare Alif
     static string_view normalizeAlif(string_view c) {
-      if (c == "\u0623" || c == "\u0625" || c == "\u0622") return "\u0627"; 
+      if (c == "\u0623" || // أ
+          c == "\u0625" || // إ
+          c == "\u0622" || // آ
+          c == "\u0621" || // ء
+          c == "\u0624" || // ؤ
+          c == "\u0626" || // ئ
+          c == "\u0671")   // ٱ
+      {
+        return "\u0623"; // أ
+      }
       return c;
     }
 

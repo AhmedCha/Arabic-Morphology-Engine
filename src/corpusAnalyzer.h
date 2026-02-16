@@ -126,7 +126,11 @@ class corpusAnalyzer {
 
       if (isPDF(filename)) {
         fileToProcess = "temp_corpus_extracted.txt";
-        string command = "pdftotext -enc UTF-8 \"" + filename + "\" \"" + fileToProcess + "\"";
+        string safeFilename = filename;
+        safeFilename.erase(remove(safeFilename.begin(), safeFilename.end(), '\"'), safeFilename.end());
+        safeFilename.erase(remove(safeFilename.begin(), safeFilename.end(), ';'), safeFilename.end());
+        
+        string command = "pdftotext -enc UTF-8 \"" + safeFilename + "\" \"" + fileToProcess + "\"";
 
         int result = system(command.c_str());
         if (result != 0) {
@@ -148,7 +152,7 @@ class corpusAnalyzer {
 
       string rawWord;
       while (file >> rawWord) {
-        string word = cleanWord(rawWord);
+        string word = MorphologyEngine::sanitize(cleanWord(rawWord));
         word = stripPrefixes(word);
         if (word.empty()) continue;
 
