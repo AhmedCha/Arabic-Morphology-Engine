@@ -6,6 +6,7 @@
 #include <list>
 #include <fstream>
 
+#include "StringUtils.h"
 using namespace std;
 
 struct Scheme {
@@ -22,18 +23,9 @@ struct Scheme {
 
   void parsePattern() {
     parsedPattern.clear();
-    for (size_t i = 0; i < pattern.length();) {
-      unsigned char c = (unsigned char)pattern[i];
-      int len = 1;
-
-      if ((c & 0xE0) == 0xC0) len = 2;
-      else if ((c & 0xF0) == 0xE0) len = 3;
-      else if ((c & 0xF8) == 0xF0) len = 4;
-
-      if (i + len > pattern.length()) len = pattern.length() - i;
-
-      parsedPattern.push_back(pattern.substr(i, len));
-      i += len;
+    vector<string_view> chars = StringUtils::splitUTF8(pattern);
+    for (const auto& c : chars) {
+      parsedPattern.push_back(string(c));
     }
   }
 };
@@ -41,11 +33,15 @@ struct Scheme {
 class SchemeHashTable {
   private:
     static const int TABLE_SIZE = 101;
-    list<Scheme> table[TABLE_SIZE];
+    static const int MAX_LENGTH = 30;
+
+    list<Scheme*> nameTable[TABLE_SIZE];    
+    list<Scheme*> patternTable[TABLE_SIZE]; 
+    list<Scheme*> lengthTable[MAX_LENGTH];
 
     int hashFunction(const string& key) const {
       int hash = 0;
-      for (char c : key) {
+      for (unsigned char c : key) {
         hash = (hash * 31 + c) % TABLE_SIZE;
       }
       if (hash < 0) hash += TABLE_SIZE;
@@ -53,29 +49,73 @@ class SchemeHashTable {
     }
 
   public:
-    // Combined Logic: Handles New & Edit
-    void insert(const string& name, const string& pattern) {
-      int index = hashFunction(name);
+    // Destructor to manually clean up memory and prevent leaks
+    ~SchemeHashTable() {
+      for (int i = 0; i < TABLE_SIZE; i++) {
+        for (Scheme* ptr : nameTable[i]) {
+          delete ptr; // Free the dynamically allocated memory
+        }
+      }
+    }
 
-      for (auto& scheme : table[index]) {
-        if (scheme.name == name) {
-          scheme.pattern = pattern;
-          scheme.parsePattern();
-          return; 
+    void insert(const string& name, const string& pattern) {
+      int nameIndex = hashFunction(name);
+
+      for (Scheme* schemePtr : nameTable[nameIndex]) {
+        if (schemePtr->name == name) {
+          return; // Already exists, ignore
         }
       }
 
-      // If not found, add new
-      table[index].emplace_back(name, pattern);
+      Scheme* newSchemePtr = new Scheme(name, pattern);
+
+      int patternIndex = hashFunction(pattern);
+      int lengthIndex = newSchemePtr->parsedPattern.size();
+
+      nameTable[nameIndex].push_back(newSchemePtr);
+      patternTable[patternIndex].push_back(newSchemePtr);
+
+      if (lengthIndex < MAX_LENGTH) {
+        lengthTable[lengthIndex].push_back(newSchemePtr);
+      }
     }
 
-    // Remove a scheme. Returns true if removed, false if not found.
     bool remove(const string& name) {
-      int index = hashFunction(name);
-      auto& bucket = table[index];
+      int nameIndex = hashFunction(name);
+      auto& bucket = nameTable[nameIndex];
+
       for (auto it = bucket.begin(); it != bucket.end(); ++it) {
-        if (it->name == name) {
+        if ((*it)->name == name) {
+          Scheme* targetScheme = *it;
+          string targetPattern = targetScheme->pattern;
+          int patternIndex = hashFunction(targetPattern);
+          int lengthIndex = targetScheme->parsedPattern.size();
+
+          // Remove from patternTable
+          auto& patBucket = patternTable[patternIndex];
+          for (auto patIt = patBucket.begin(); patIt != patBucket.end(); ++patIt) {
+            if ((*patIt)->name == name) {
+              patBucket.erase(patIt);
+              break;
+            }
+          }
+
+          // Remove from lengthTable
+          if (lengthIndex < MAX_LENGTH) {
+            auto& lenBucket = lengthTable[lengthIndex];
+            for (auto lenIt = lenBucket.begin(); lenIt != lenBucket.end(); ++lenIt) {
+              if ((*lenIt)->name == name) {
+                lenBucket.erase(lenIt);
+                break;
+              }
+            }
+          }
+
+          // Remove from primary nameTable
           bucket.erase(it);
+
+          delete targetScheme; 
+
           return true;
         }
       }
@@ -84,43 +124,34 @@ class SchemeHashTable {
 
     string getPattern(const string& name) const {
       int index = hashFunction(name);
-      for (const auto& scheme : table[index]) {
-        if (scheme.name == name) {
-          return scheme.pattern;
+      for (Scheme* schemePtr : nameTable[index]) {
+        if (schemePtr->name == name) {
+          return schemePtr->pattern;
         }
       }
       return "";
     }
 
     vector<Scheme> getSchemesByAddedLength(int extraLengthNeeded) const {
-      vector<Scheme> matchingSchemes;
+      vector<Scheme> result;
+      int targetLength = extraLengthNeeded + 3; // base root is 3 chars
 
-      // Target size of the pattern (e.g. if we need +3 letters, pattern must be 6 chars long)
-      int targetPatternSize = extraLengthNeeded + 3; 
-
-      for (int i = 0; i < TABLE_SIZE; i++) {
-        for (const auto& scheme : table[i]) {
-          if ((int)scheme.parsedPattern.size() == targetPatternSize) {
-            matchingSchemes.push_back(scheme);
-          }
+      if (targetLength >= 0 && targetLength < MAX_LENGTH) {
+        for (Scheme* schemePtr : lengthTable[targetLength]) {
+          result.push_back(*schemePtr);
         }
       }
-      return matchingSchemes;
+      return result;
     }
 
     string getNameByPattern(const string& patternToFind) const {
-      for (int i = 0; i < TABLE_SIZE; i++) {
-        for (const auto& scheme : table[i]) {
-
-          string schemeSignature = "";
-          for(const string& p : scheme.parsedPattern) {
-            schemeSignature += p;
-          }
-
-          if (schemeSignature == patternToFind) {
-            return scheme.name;
-          }
+      int index = hashFunction(patternToFind);
+      for (Scheme* schemePtr : patternTable[index]) {
+        string schemeSignature = "";
+        for(const string& p : schemePtr->parsedPattern) {
+          schemeSignature += p;
         }
+        if (schemeSignature == patternToFind) return schemePtr->name;
       }
       return "";
     }
@@ -128,39 +159,50 @@ class SchemeHashTable {
     vector<Scheme> getAllSchemes() const {
       vector<Scheme> allSchemes;
       for (int i = 0; i < TABLE_SIZE; i++) {
-        for (const auto& scheme : table[i]) {
-          allSchemes.push_back(scheme);
+        for (Scheme* schemePtr : nameTable[i]) {
+          allSchemes.push_back(*schemePtr);
         }
       }
       return allSchemes;
     }
 
-    // Returns true if successful, false otherwise
     bool saveToFile(const string& filename) const {
       ofstream outFile(filename);
       if (!outFile) {
         return false;
       }
       for (int i = 0; i < TABLE_SIZE; i++) {
-        for (const auto& scheme : table[i]) {
-          outFile << scheme.name << " " << scheme.pattern << endl;
+        for (Scheme* schemePtr : nameTable[i]) {
+          outFile << schemePtr->name << " " << schemePtr->pattern << endl;
         }
       }
       outFile.close();
       return true;
     }
 
-    // Returns true if successful, false otherwise
     bool loadFromFile(const string& filename) {
       ifstream inFile(filename);
       if (!inFile) return false;
 
-      // Clear table before loading
-      for(int i=0; i<TABLE_SIZE; i++) table[i].clear();
+      for(int i = 0; i < TABLE_SIZE; i++) {
+        for(Scheme* ptr : nameTable[i]) {
+          delete ptr;
+        }
+        nameTable[i].clear();
+        patternTable[i].clear();
+      }
+      for(int i = 0; i < MAX_LENGTH; i++) {
+        lengthTable[i].clear();
+      }
 
       string name, pattern;
       while (inFile >> name >> pattern) {
-        insert(name, pattern);
+        name = StringUtils::sanitize(name);
+        pattern = StringUtils::sanitize(pattern);
+
+        if (!name.empty() && !pattern.empty()) {
+          insert(name, pattern);
+        }
       }
       inFile.close();
       return true;

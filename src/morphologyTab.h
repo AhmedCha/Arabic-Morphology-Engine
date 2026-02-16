@@ -17,6 +17,7 @@
 #include "AVLTree.h"
 #include "schemeHashTable.h"
 #include "morphologyEngine.h"
+#include "StringUtils.h"
 
 class MorphologyTab : public QWidget {
   Q_OBJECT
@@ -208,10 +209,10 @@ class MorphologyTab : public QWidget {
 
     void onOpenSchemesPopup() {
       QString customRoot = customRootInput->text().trimmed();
-      std::string rootStr = MorphologyEngine::sanitize(customRoot.toStdString());
+      std::string rootStr = StringUtils::sanitize(customRoot.toStdString());
 
       // Use your engine's UTF8 splitter to perfectly validate 3 letters
-      if (MorphologyEngine::splitUTF8(rootStr).size() != 3) {
+      if (StringUtils::splitUTF8(rootStr).size() != 3) {
         QMessageBox::warning(this, 
             t("Invalid Length", "Longueur Invalide", "طول غير صالح"), 
             t("The root must be exactly 3 letters long.", 

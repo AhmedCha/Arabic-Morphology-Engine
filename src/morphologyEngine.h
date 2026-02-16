@@ -8,6 +8,7 @@
 
 #include "AVLTree.h"
 #include "schemeHashTable.h" 
+#include "StringUtils.h"
 
 using namespace std;
 
@@ -24,56 +25,7 @@ struct RootSearchResult {
 
 class MorphologyEngine {
   public:
-    // HELPER: Strip invisible carriage returns, tabs, and accidental spaces
-    static string sanitize(const string& str) {
-      string out;
-      for (char c : str) {
-        if (c != '\r' && c != '\n' && c != '\t' && c != ' ') {
-          out += c;
-        }
-      }
-      return out;
-    }
-
-    static int utf8_length(string_view str) {
-      return splitUTF8(str).size();
-    }
-
-    // Splits a UTF-8 string into individual characters safely
-    static vector<string_view> splitUTF8(string_view str) {
-      vector<string_view> chars;
-      for (size_t i = 0; i < str.length();) {
-        unsigned char c = str[i];
-        int len = 1;
-
-        if ((c & 0xE0) == 0xC0) len = 2;
-        else if ((c & 0xF0) == 0xE0) len = 3;
-        else if ((c & 0xF8) == 0xF0) len = 4;
-
-        string_view currentChar = str.substr(i, len);
-        chars.push_back(currentChar);
-
-        i += len;
-      }
-      return chars;
-    }
-
-    // HELPER: Normalize Alif variations to bare Alif
-    static string_view normalizeAlif(string_view c) {
-      if (c == "\u0623" || // أ
-          c == "\u0625" || // إ
-          c == "\u0622" || // آ
-          c == "\u0621" || // ء
-          c == "\u0624" || // ؤ
-          c == "\u0626" || // ئ
-          c == "\u0671")   // ٱ
-      {
-        return "\u0623"; // أ
-      }
-      return c;
-    }
-
-    // HELPER: Expand Shadda into two identical letters
+    // HELPER: Expand Shadda into two identical letters (Kept here because it's specific to morphology)
     static vector<string_view> expandShadda(const vector<string_view>& chars) {
       vector<string_view> expanded;
       for (const auto& c : chars) {
@@ -88,8 +40,8 @@ class MorphologyEngine {
 
     // GENERATE (Forward): Root + Pattern -> Word
     static string generate(const string& rawRoot, const vector<string>& patChars) {
-      string root = sanitize(rawRoot);
-      vector<string_view> rootChars = splitUTF8(root);
+      string root = StringUtils::sanitize(rawRoot);
+      vector<string_view> rootChars = StringUtils::splitUTF8(root);
       if (rootChars.size() != 3) return "Error";
 
       string result = "";
@@ -114,15 +66,15 @@ class MorphologyEngine {
 
     // APPLY SCHEME: String Pattern + Root -> Word (Used heavily by the Custom Generator UI)
     static string applyScheme(const string& rawRoot, const string& rawPattern) {
-      string root = sanitize(rawRoot);
-      vector<string_view> rootChars = splitUTF8(root);
+      string root = StringUtils::sanitize(rawRoot);
+      vector<string_view> rootChars = StringUtils::splitUTF8(root);
 
       // Safety check: Ensure exactly 3 root letters
       if (rootChars.size() != 3) return ""; 
 
       string result = "";
       string_view lastChar = "";
-      vector<string_view> patChars = splitUTF8(rawPattern);
+      vector<string_view> patChars = StringUtils::splitUTF8(rawPattern);
 
       for (string_view ch : patChars) {
         string_view current;
@@ -144,7 +96,7 @@ class MorphologyEngine {
     // Generate Family & Update Tree
     // Returns number of words generated. Returns -1 if root not found.
     static int generateFamily(const string& rawRoot, AVLTree<string>& tree, const SchemeHashTable& schemes) {
-      string root = sanitize(rawRoot);
+      string root = StringUtils::sanitize(rawRoot);
       if (!tree.search(root)) {
         return -1; 
       }
@@ -162,11 +114,11 @@ class MorphologyEngine {
 
     // VALIDATE: Check if Word comes from Root using any known Scheme
     static bool validate(const string& rawWord, const string& rawRoot, const SchemeHashTable& schemes, string& foundSchemeName, AVLTree<string>& tree) {
-      string word = sanitize(rawWord);
-      string root = sanitize(rawRoot);
+      string word = StringUtils::sanitize(rawWord);
+      string root = StringUtils::sanitize(rawRoot);
 
-      vector<string_view> wChars = expandShadda(splitUTF8(word));
-      vector<string_view> rChars = splitUTF8(root);
+      vector<string_view> wChars = expandShadda(StringUtils::splitUTF8(word));
+      vector<string_view> rChars = StringUtils::splitUTF8(root);
 
       if (rChars.size() != 3) return false;
 
@@ -174,7 +126,7 @@ class MorphologyEngine {
       int rIndex = 0;
 
       for (const auto& wChar : wChars) {
-        if (rIndex < 3 && normalizeAlif(wChar) == normalizeAlif(rChars[rIndex])) {
+        if (rIndex < 3 && StringUtils::normalizeAlif(wChar) == StringUtils::normalizeAlif(rChars[rIndex])) {
           deducedPattern += to_string(rIndex + 1);
           rIndex++;
         } else {
@@ -195,8 +147,8 @@ class MorphologyEngine {
 
     // REVERSE ENGINEER helpers
     static string extractRootIfMatches(const string& word, const string& pattern) {
-      vector<string_view> wChars = expandShadda(splitUTF8(word));
-      vector<string_view> pChars = splitUTF8(pattern);
+      vector<string_view> wChars = expandShadda(StringUtils::splitUTF8(word));
+      vector<string_view> pChars = StringUtils::splitUTF8(pattern);
 
       if (wChars.size() != pChars.size()) return "";
 
@@ -207,7 +159,7 @@ class MorphologyEngine {
         else if (pChars[i] == "2") r2 = wChars[i];
         else if (pChars[i] == "3") r3 = wChars[i];
         else {
-          if (normalizeAlif(pChars[i]) != normalizeAlif(wChars[i])) return ""; 
+          if (StringUtils::normalizeAlif(pChars[i]) != StringUtils::normalizeAlif(wChars[i])) return ""; 
         }
       }
 
@@ -221,8 +173,8 @@ class MorphologyEngine {
     // Returns a RootSearchResult struct for GUI consumption
     static RootSearchResult findRoot(const string& rawWord, const AVLTree<string>& rootsTree, const SchemeHashTable& schemes) {
       RootSearchResult result;
-      string word = sanitize(rawWord); 
-      vector<string_view> wChars = splitUTF8(word);
+      string word = StringUtils::sanitize(rawWord); 
+      vector<string_view> wChars = StringUtils::splitUTF8(word);
       int wordLen = wChars.size();
       int rootLen = 3; 
       int requiredAddedLength = wordLen - rootLen;
@@ -257,12 +209,11 @@ class MorphologyEngine {
 
     // PATTERN AUTO-GENERATOR
     static string derivePatternFromName(const string& rawName) {
-      string name = sanitize(rawName);
-      vector<string_view> chars = splitUTF8(name);
+      string name = StringUtils::sanitize(rawName);
+      vector<string_view> chars = StringUtils::splitUTF8(name);
       string pattern = "";
 
-      // Check if the scheme starts with "ال" (using your normalizeAlif helper just in case)
-      bool startsWithAl = (chars.size() >= 2 && normalizeAlif(chars[0]) == "ا" && chars[1] == "ل");
+      bool startsWithAl = (chars.size() >= 2 && StringUtils::normalizeAlif(chars[0]) == "ا" && chars[1] == "ل");
 
       for (size_t i = 0; i < chars.size(); i++) {
         string_view c = chars[i];

@@ -6,15 +6,15 @@
 #include <vector>
 #include <string_view>
 #include <cstdlib>
-#include <unordered_map> // ADDED: Required for tracking word frequencies
+#include <list>
 
 #include "AVLTree.h"
 #include "schemeHashTable.h"
 #include "morphologyEngine.h"
+#include "StringUtils.h"
 
 using namespace std;
 
-// THIS IS THE STRUCT THE COMPILER IS LOOKING FOR:
 struct AnalyzedWord {
   std::string root;
   std::string derivedWord;
@@ -32,44 +32,150 @@ struct AnalysisReport {
   std::vector<AnalyzedWord> extractedWords; 
 };
 
+class WordFrequencyMap {
+  private:
+    static const int TABLE_SIZE = 1009;
+    list<AnalyzedWord> table[TABLE_SIZE];
+
+    int hash(const string& key) const {
+      int h = 0;
+      for (unsigned char c : key) {
+        h = (h * 31 + c) % TABLE_SIZE;
+      }
+      return h;
+    }
+
+  public:
+    void addWord(const string& derivedWord, const string& root, const string& schemeName) {
+      int index = hash(derivedWord);
+
+      // If word exists, increment frequency
+      for (auto& aw : table[index]) {
+        if (aw.derivedWord == derivedWord) {
+          aw.frequency++;
+          return;
+        }
+      }
+
+      // Otherwise, add new word
+      AnalyzedWord newWord = {root, derivedWord, schemeName, 1};
+      table[index].push_back(newWord);
+    }
+
+    void exportToVector(vector<AnalyzedWord>& outVector) const {
+      for (int i = 0; i < TABLE_SIZE; i++) {
+        for (const auto& aw : table[i]) {
+          outVector.push_back(aw);
+        }
+      }
+    }
+};
+
 class corpusAnalyzer {
   private:
-    // Helper to strip standard punctuation from the start/end of a word
     static string cleanWord(const string& word) {
       string cleaned = "";
 
       static const vector<string_view> diacritics = {
-        "\u064B", "\u064C", "\u064D", "\u064E", 
-        "\u064F", "\u0650", "\u0652", "\u0640", 
-        "\u202B", "\u202C", "\u200E", "\u200F", "\u202A", "\u202D", "\u202E",
-        "\u060C", "\u061B", "\u061F", "\u00AB", "\u00BB",
         "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-        "\u0660", "\u0661", "\u0662", "\u0663", "\u0664", 
-        "\u0665", "\u0666", "\u0667", "\u0668", "\u0669",
-        "\u06F0", "\u06F1", "\u06F2", "\u06F3", "\u06F4", 
-        "\u06F5", "\u06F6", "\u06F7", "\u06F8", "\u06F9"
+        "\u00AB", "\u00BB", "\u060C", "\u061B", "\u061F", 
+        "\u0640", "\u064B", "\u064C", "\u064D", "\u064E", 
+        "\u064F", "\u0650", "\u0652", "\u0660", "\u0661", 
+        "\u0662", "\u0663", "\u0664", "\u0665", "\u0666", 
+        "\u0667", "\u0668", "\u0669", "\u06F0", "\u06F1", 
+        "\u06F2", "\u06F3", "\u06F4", "\u06F5", "\u06F6", 
+        "\u06F7", "\u06F8", "\u06F9", "\u200E", "\u200F", 
+        "\u202A", "\u202B", "\u202C", "\u202D", "\u202E"
       };
 
-      vector<string_view> chars = MorphologyEngine::splitUTF8(word);
+      vector<string_view> chars = StringUtils::splitUTF8(word);
 
       for (const auto& c : chars) {
         if (c.length() == 1) {
           char asciiChar = c[0];
-          if (isdigit(asciiChar) || ispunct(asciiChar) || asciiChar == ' ') {
+          bool isNumber = (asciiChar >= '0' && asciiChar <= '9');
+          bool isPunctuation = (asciiChar >= '!' && asciiChar <= '/') || 
+            (asciiChar >= ':' && asciiChar <= '@') || 
+            (asciiChar >= '[' && asciiChar <= '`') || 
+            (asciiChar >= '{' && asciiChar <= '~');
+
+          if (isNumber || isPunctuation || asciiChar == ' ') {
             continue;
           }
         }
 
         bool isDiacritic = false;
-        for (const auto& d : diacritics) {
-          if (c == d) {
+        int left = 0;
+        int right = diacritics.size() - 1;
+
+        while (left <= right) {
+          int mid = left + (right - left) / 2;
+
+          if (diacritics[mid] == c) {
             isDiacritic = true;
             break;
+          }
+          else if (diacritics[mid] < c) {
+            left = mid + 1;
+          }
+          else {
+            right = mid - 1;
           }
         }
 
         if (!isDiacritic) {
           cleaned += string(c);
+        }
+      }
+
+      if (!cleaned.empty()) {
+        // This array is STRICTLY ALPHABETICALLY SORTED by UTF-8 bytes!
+        // If you add new words to this list, you MUST keep them in alphabetical order
+        // otherwise the binary search will fail to find them.
+        static const vector<string> stopWords = {
+          "أجل", "أنا", "أنت", "أنتم", "أو", "أولئك", "أي", "أين",
+          "إذن", "إلا", "إلى", "إليك", "إن", "إنما",
+          "اب", "ابن", "ابو", "التي", "الذي", "الذين", "اللاتي", "اللواتي", 
+          "الى", "اليك", "اليكم", "ام", "اما", "انا", "انت", "انتم", "انما", "انه", "او", "اي", "اين",
+          "بل", "به", "بها", "بهم", "بين",
+          "تلك",
+          "ثم",
+          "حتى", "حين",
+          "ذلك",
+          "رب",
+          "سوف", "سوى",
+          "صار",
+          "عدا", "على", "عليه", "عليها", "عليهم", "عن", "عند", "عندما",
+          "غير",
+          "في", "فيه", "فيها", "فيهم",
+          "قد", "قط",
+          "كأن", "كان", "كانت", "كذلك", "كل", "كلا", "كلما", "كم", "كما", "كيف",
+          "لا", "لعل", "لقد", "لك", "لكم", "لكن", "لم", "لما", "لن", "لو", "لولا", "لي", "ليت", "ليس",
+          "ما", "ماذا", "متى", "مذ", "مع", "مما", "من", "منذ", "منه", "منها", "منهم", "مهما",
+          "نحن", "نحو", "نعم",
+          "هؤلاء", "هاتان", "هذا", "هذان", "هذه", "هل", "هم", "هما", "هن", "هنا", "هناك", "هو", "هي",
+          "يا"
+        };
+
+        int left = 0;
+        int right = stopWords.size() - 1;
+        bool isStopWord = false;
+
+        while (left <= right) {
+          int mid = left + (right - left) / 2;
+          if (stopWords[mid] == cleaned) {
+            isStopWord = true;
+            break;
+          } else if (stopWords[mid] < cleaned) {
+            left = mid + 1;
+          } else {
+            right = mid - 1;
+          }
+        }
+
+        // If it's a common word, return an empty string to instantly discard it
+        if (isStopWord) {
+          return ""; 
         }
       }
 
@@ -88,16 +194,13 @@ class corpusAnalyzer {
     }
 
     static string stripPrefixes(const string& word) {
-      vector<string_view> chars = MorphologyEngine::splitUTF8(word);
+      vector<string_view> chars = StringUtils::splitUTF8(word);
 
-      // We only strip if the remaining word will have at least 3 letters 
-      // (since valid Arabic roots/schemes are at least 3 letters long).
       if (chars.size() >= 5) {
         string first = string(chars[0]);
         string second = string(chars[1]);
         string third = string(chars[2]);
 
-        // 1. Check for 3-letter prefixes: وال (wa-al), فال (fa-al), بال (bi-al), كال (ka-al)
         if (chars.size() >= 6) {
           if ((first == "و" || first == "ف" || first == "ب" || first == "ك") && 
               second == "ا" && third == "ل") {
@@ -107,7 +210,6 @@ class corpusAnalyzer {
           }
         }
 
-        // 2. Check for 2-letter prefixes: ال (al), لل (lil)
         if ((first == "ا" && second == "ل") || (first == "ل" && second == "ل")) {
           string stripped = "";
           for (size_t i = 2; i < chars.size(); ++i) stripped += chars[i];
@@ -115,7 +217,7 @@ class corpusAnalyzer {
         }
       }
 
-      return word; // Return as-is if no prefix matched
+      return word; 
     }
 
   public:
@@ -126,10 +228,14 @@ class corpusAnalyzer {
 
       if (isPDF(filename)) {
         fileToProcess = "temp_corpus_extracted.txt";
-        string safeFilename = filename;
-        safeFilename.erase(remove(safeFilename.begin(), safeFilename.end(), '\"'), safeFilename.end());
-        safeFilename.erase(remove(safeFilename.begin(), safeFilename.end(), ';'), safeFilename.end());
-        
+
+        string safeFilename = "";
+        for (char c : filename) {
+          if (c != '\"' && c != ';' && c != '&' && c != '|' && c != '`' && c != '$') {
+            safeFilename += c;
+          }
+        }
+
         string command = "pdftotext -enc UTF-8 \"" + safeFilename + "\" \"" + fileToProcess + "\"";
 
         int result = system(command.c_str());
@@ -146,19 +252,17 @@ class corpusAnalyzer {
         return report;
       }
 
-      // --- TRACKING MAP ---
-      // Key: derivedWord | Value: AnalyzedWord
-      unordered_map<string, AnalyzedWord> localWordFrequencies;
+      WordFrequencyMap localWordFrequencies;
 
       string rawWord;
       while (file >> rawWord) {
-        string word = MorphologyEngine::sanitize(cleanWord(rawWord));
+        string word = StringUtils::sanitize(cleanWord(rawWord));
         word = stripPrefixes(word);
         if (word.empty()) continue;
 
         report.totalWordsProcessed++;
 
-        vector<string_view> wChars = MorphologyEngine::splitUTF8(word);
+        vector<string_view> wChars = StringUtils::splitUTF8(word);
         int wordLen = wChars.size();
         int diff = wordLen - 3;
 
@@ -167,18 +271,18 @@ class corpusAnalyzer {
         vector<Scheme> candidates = schemes.getSchemesByAddedLength(diff);
 
         for (const auto& scheme : candidates) {
+          // extractRootIfMatches remains here because it's morphology specific
           string candidateRoot = MorphologyEngine::extractRootIfMatches(word, scheme.pattern);
 
           if (candidateRoot != "") {
             bool rootExists = tree.search(candidateRoot);
             bool wordAccepted = false;
 
-            // Check if we accept this root based on the mode
             if (strictMode) {
               if (rootExists) {
                 wordAccepted = true;
               }
-            } else { // Brute-force mode
+            } else { 
               if (!rootExists) {
                 tree.insert(candidateRoot);
                 report.newRootsFound++;
@@ -186,27 +290,13 @@ class corpusAnalyzer {
               wordAccepted = true;
             }
 
-            // If the word passed our checks, log it!
             if (wordAccepted) {
               tree.addDerivedWord(candidateRoot, word);
               report.derivedWordsLogged++;
 
-              // --- POPULATE THE TRACKING MAP ---
-              if (localWordFrequencies.find(word) != localWordFrequencies.end()) {
-                // We've seen this exact word before, just bump the frequency count
-                localWordFrequencies[word].frequency++;
-              } else {
-                // First time seeing this word, create a new record
-                AnalyzedWord newWordData;
-                newWordData.root = candidateRoot;
-                newWordData.derivedWord = word;
-                newWordData.schemeName = scheme.name; 
-                newWordData.frequency = 1;
+              localWordFrequencies.addWord(word, candidateRoot, scheme.name);
 
-                localWordFrequencies[word] = newWordData;
-              }
-
-              break; // We found the matching scheme, stop checking other candidates for this word
+              break; 
             }
           }
         }
@@ -217,11 +307,7 @@ class corpusAnalyzer {
         remove(fileToProcess.c_str());
       }
 
-      // --- TRANSFER MAP DATA TO REPORT LIST ---
-      // The UI table needs a vector, so we push all map values into the extractedWords vector
-      for (const auto& pair : localWordFrequencies) {
-        report.extractedWords.push_back(pair.second);
-      }
+      localWordFrequencies.exportToVector(report.extractedWords);
 
       report.success = true;
       return report;

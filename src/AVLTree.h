@@ -8,6 +8,8 @@
 #include <string>
 #include <memory>
 
+#include "StringUtils.h"
+
 using namespace std;
 
 struct DerivedWord {
@@ -276,6 +278,7 @@ template <typename T> class AVLTree {
         T key;
         ss >> key;
 
+        key = StringUtils::sanitize(key);
         if (key.empty()) {
           continue;
         }
@@ -290,6 +293,7 @@ template <typename T> class AVLTree {
         string word;
         int freq;
         while(ss >> word >> freq) {
+          word = StringUtils::sanitize(word);
           node->derivedWords.push_back(DerivedWord(word, freq));
         }
       }
