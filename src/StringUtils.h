@@ -54,7 +54,7 @@ class StringUtils {
           c == "\u0626" || // ئ
           c == "\u0671")   // ٱ
       {
-          return "\u0623"; // أ
+        return "\u0623"; // أ
       }
       return c;
     }

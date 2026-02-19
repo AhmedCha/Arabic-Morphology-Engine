@@ -95,8 +95,8 @@ class RootsTab : public QWidget {
       std::string target = items.first()->data(0).toString().toStdString();
       AVLNode<std::string>* curr = m_tree->getRoot();
       while (curr) {
-        if (target < curr->key) curr = curr->left.get();
-        else if (target > curr->key) curr = curr->right.get();
+        if (target < curr->key) curr = curr->left;
+        else if (target > curr->key) curr = curr->right;
         else return curr;
       }
       return nullptr;
@@ -110,11 +110,11 @@ class RootsTab : public QWidget {
 
       if (node->left) {
         scene->addLine(x, y, x - hSpacing, y + vSpacing, QPen(QColor("#95a5a6"), 2))->setZValue(-1);
-        drawNode(node->left.get(), x - hSpacing, y + vSpacing, hSpacing / 2.0);
+        drawNode(node->left, x - hSpacing, y + vSpacing, hSpacing / 2.0);
       }
       if (node->right) {
         scene->addLine(x, y, x + hSpacing, y + vSpacing, QPen(QColor("#95a5a6"), 2))->setZValue(-1);
-        drawNode(node->right.get(), x + hSpacing, y + vSpacing, hSpacing / 2.0);
+        drawNode(node->right, x + hSpacing, y + vSpacing, hSpacing / 2.0);
       }
 
       QGraphicsEllipseItem* ellipse = scene->addEllipse(
@@ -300,8 +300,8 @@ class RootsTab : public QWidget {
         AVLNode<std::string>* newCurr = m_tree->getRoot();
         std::string target = newKey.toStdString();
         while (newCurr) {
-          if (target < newCurr->key) newCurr = newCurr->left.get();
-          else if (target > newCurr->key) newCurr = newCurr->right.get();
+          if (target < newCurr->key) newCurr = newCurr->left;
+          else if (target > newCurr->key) newCurr = newCurr->right;
           else {
             newCurr->derivedWords = savedFamily;
             break;
