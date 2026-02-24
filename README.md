@@ -1,140 +1,175 @@
-# Arabic Morphology Engine & Real-Time AVL Visualizer
+# Arabic Morphology Engine (Root-Pattern System) 🕌
 
-![C++](https://img.shields.io/badge/C++-17-blue.svg)
-![Node.js](https://img.shields.io/badge/Node.js-22-green.svg)
-![D3.js](https://img.shields.io/badge/D3.js-v7-orange.svg)
-![License](https://img.shields.io/badge/License-MIT-purple.svg)
+An advanced algorithmic tool for Arabic Natural Language Processing (NLP). This project implements the **Root-Pattern (Racine-Schème)** morphological model using high-performance data structures including **AVL Trees** for root indexing and **Hash Tables** for pattern management.
 
-A high-performance Arabic morphological analysis system built on a self-balancing **AVL Tree** architecture. This project features a state-of-the-art **Real-Time Web Visualizer** that provides a synchronized, animated view of the data structure's internal state as operations occur.
+Designed for the **Algorithmic Project (1ING GLSI)**.
 
----
+## ✨ Features
 
-## System Architecture
+* **Morphological Generation:** Automatically generates derived words by combining a trilateral root (e.g., *K-T-B*) with a specific pattern (e.g., *maF3ouL*).
+* **Reverse Extraction:** Decomposes a given Arabic word to identify its root and morphological pattern.
+* **Corpus Analysis:** Processes large text files to extract roots, calculate word frequencies, and discover new potential roots using a "Strict" vs "Learning" mode.
+* **Interactive Visualization:**
+* Dynamic **AVL Tree** visualization of roots with Zoom/Pan capabilities.
+* Tabular view of morphological families.
 
-The following diagram illustrates the bi-directional synchronization between the high-performance C++ engine and the modern web-based visualizer.
+* **Multilingual UI:** Full interface support for English, French, and Arabic.
 
-```mermaid
-graph TD
-    subgraph "C++ Core Engine (Terminal)"
-        CPP[Arabic Morphology System]
-        AVL[AVL Tree Controller]
-        DB[(racines.txt)]
-    end
+## 🛠 Prerequisites
 
-    subgraph "Bridge System (Node.js)"
-        WS[WebSocket Server]
-        FS[File System Watcher]
-    end
+Before building, ensure you have the following installed on your system:
 
-    subgraph "Web Visualizer (D3.js)"
-        GUI[Apple-Inspired Interface]
-        ANIM[Hierarchical Animation]
-        LOG[Activity Log]
-    end
-
-    CPP <--> AVL
-    AVL <--> DB
-
-    %% Communication Flow
-    AVL -- "Emits JSON Events" --> FS
-    FS -- "Broadcasts" --> WS
-    WS -- "Real-time Update" --> GUI
-    GUI -- "Step-by-step" --> ANIM
-    GUI -- "Append" --> LOG
-
-    %% Reverse Command
-    GUI -- "Insert/Delete Command" --> WS
-    WS -- "Command File" --> CPP
-```
+1. **C++ Compiler:** Supporting **C++17** or higher (GCC, Clang, or MSVC).
+2. **CMake:** Version **3.16** or later.
+3. **Qt6 Framework:** specifically the **Qt Widgets** module.
 
 ---
 
-## Key Features
+## 📦 Installation & Compilation
 
-### Morphological Engine
+### 🐧 Linux (Ubuntu/Debian)
 
-- **Root Extraction**: Intelligent detection of triliteral roots from complex Arabic words.
-- **Family Generation**: Automatic derivation of words using standard Arabic schemes (_Wazn_).
-- **Corpus Analysis**: Paginated analysis of large text files in Strict or Discovery modes.
-- **Multi-language Support**: Full UI support for **Arabic**, **English**, and **French**.
+#### 1. Install Dependencies
 
-### Real-Time Visualizer
-
-- **Smooth Animations**: Powered by **D3.js** with sequential step-by-step tree balancing.
-- **Apple-Style Aesthetics**: Premium dark glassmorphism UI with micro-animations.
-- **Complexity Tracking**: Live Big-O analysis (Time: $O(\log n)$, Space: $O(n)$) updated per operation.
-- **Interactive Controls**: Manage the tree directly from the browser with instant terminal sync.
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- **Compiler**: `g++` (supporting C++17)
-- **Environment**: Linux/Unix
-- **Runtime**: `Node.js` (v18+) for the visualizer
-
-### 1. Build the System
+You need the build tools, CMake, and Qt6 libraries.
 
 ```bash
-# Clone the repository
-git clone https://github.com/AhmedCha/Arabic-Morphology-Engine.git
-cd Arabic-Morphology-Engine
+sudo apt update
+sudo apt install build-essential cmake
+sudo apt install qt6-base-dev qt6-declarative-dev libqt6widgets6 libgl1-mesa-dev
 
-# Build standard version
-make all
-
-# Build version with Visualizer support
-make visualizer
 ```
 
-### 2. Launch the Visualizer
+#### 2. Build the Project
+
+Navigate to the project directory in your terminal:
 
 ```bash
-# Install web dependencies
-make install-vis
+mkdir build
+cd build
+cmake ..
+make
 
-# Start the bridge server
-make start-server
 ```
 
-Visit **[http://localhost:3000](http://localhost:3000)** in your browser.
-
-### 3. Run the Engine
+#### 3. Run the Application
 
 ```bash
-./morphology-engine-vis
+./ArabicMorphology
+
 ```
 
+> **Note:** Ensure `racines.txt` and `schemes.txt` are in the same directory as the executable, or load them manually via the UI.
+
 ---
 
-## Project Structure
+### 🪟 Windows
 
-```text
-.
-├── src/                    # C++ Source Code
-│   ├── AVLTree.h           # Instrumented AVL implementation
-│   ├── morphologyEngine.h  # Morphological logic
-│   ├── main.cpp            # Entry point
-│   └── ...
-├── visualizer/             # Web Visualizer
-│   ├── server.js           # Node.js WebSocket Bridge
-│   └── public/             # D3.js Frontend (HTML/CSS/JS)
-├── Makefile                # Unified build system
-├── racines.txt             # Data persistence (Roots)
-└── schemes.txt             # Arabic patterns definition
+#### Option A: Using Qt Creator (Recommended)
+
+1. Open **Qt Creator**.
+2. Go to **File > Open File or Project** and select `CMakeLists.txt`.
+3. Configure the project using your installed Kit (e.g., MinGW or MSVC).
+4. Click the **Run** button (Green Arrow).
+
+#### Option B: Command Line (PowerShell / CMD)
+
+You must use the **Qt command prompt** (e.g., *"Qt 6.x.x (MinGW/MSVC) Command Prompt"*) to ensure environment variables are set correctly.
+
+1. Navigate to the project folder.
+2. Run the build commands:
+
+```powershell
+mkdir build
+cd build
+cmake ..
+cmake --build . --config Release
+
 ```
 
+1. **Fixing Missing DLL Errors:**
+If you try to run the `.exe` directly from the folder and get "Missing Qt6Core.dll" errors, run the deployment tool:
+
+```powershell
+windeployqt.exe Release\ArabicMorphology.exe
+
+```
+
+1. Run the executable located in the `Release` folder.
+
 ---
 
-## Tech Stack
+## 📂 Complete Project Structure
 
-- **Backend**: C++17 (Performance & Data Structures)
-- **Bridge**: Node.js & WebSockets (Real-time I/O)
-- **Frontend**: Vanilla JavaScript & D3.js (Visualization)
-- **Styling**: Modern CSS (Glassmorphism & SF Pro / Inter fonts)
+### 🧠 Core Logic & Data Structures
+
+| File | Description |
+| --- | --- |
+| **`AVLTree.h`** | Generic self-balancing Binary Search Tree implementation for storing Roots. Includes node rotation logic. |
+| **`schemeHashTable.h`** | Hash Table implementation with triple-indexing (Name, Pattern, Length) for fast Scheme retrieval. |
+| **`morphologyEngine.h`** | Core static class handling the logic for *Generation* (Root+Pattern -> Word) and *Extraction* (Word -> Root). |
+| **`corpusAnalyzer.h`** | Logic for parsing text files, counting word frequencies, and auto-learning new roots. |
+| **`StringUtils.h`** | Utilities for handling UTF-8 Arabic characters (resolves the 2-byte char issue in C++). |
+
+### 🖥️ User Interface (Qt6)
+
+| File | Description |
+| --- | --- |
+| **`main.cpp`** | Application entry point. Initializes Qt and loads initial data. |
+| **`mainwindow.h` / `.cpp**` | Main container for the GUI. Handles the menu bar, language switching, and the tab widget. |
+| **`morphologyTab.h`** | UI tab for generating words and reverse-extracting roots. |
+| **`rootsTab.h`** | UI tab for viewing/editing roots. Contains the `ZoomableView` logic to render the AVL Tree graphically. |
+| **`schemesTab.h`** | UI tab for managing and viewing the hash table of morphological patterns. |
+| **`corpusTab.h`** | UI tab for loading text files, running the analyzer, and displaying statistics/new roots. |
+
+### ⚙️ Configuration
+
+| File | Description |
+| --- | --- |
+| **`CMakeLists.txt`** | Build configuration file. Sets C++17, links Qt6 Widgets, and enables `AUTOMOC` for Qt meta-object compilation. |
 
 ---
 
-_Developed for advanced Arabic linguistic processing and data structure education._
+## 🧩 Algorithms Overview
+
+### 1. Root Storage (AVL Tree)
+
+* **Why:** Arabic roots are numerous. We need  search time to keep the interface responsive.
+* **How:** The tree auto-balances using rotations (Left/Right) whenever a root is inserted.
+
+### 2. Pattern Matching (Hash Table)
+
+* **Why:** Patterns need to be accessed instantly  during generation.
+* **Optimization:** We maintain a `lengthTable` array. When analyzing a word of length 6, we only check patterns that produce 6-letter words, significantly reducing processing time.
+
+### 3. Generation Logic
+
+The engine replaces numerical placeholders in patterns with root letters:
+
+* Pattern: `m a 1 2 u 3` (maF3ouL)
+* Root: `k t b`
+* Result: `m a k t u b` (maktoub)
+* *Includes handling for Shadda (gemination).*
+
+## ⚠️ Troubleshooting
+
+**1. "Could not find a package configuration file provided by 'Qt6'..."**
+
+* **Solution:** Make sure you have installed `qt6-base-dev` (Linux) or that your `CMAKE_PREFIX_PATH` includes the path to your Qt installation (Windows).
+
+**2. "GL/gl.h: No such file or directory" (Linux)**
+
+* **Solution:** You are missing OpenGL development files. Run:
+
+```bash
+sudo apt install libgl1-mesa-dev
+
+```
+
+**3. Arabic text appears as question marks (???)**
+
+* **Solution:** The application uses UTF-8. Ensure your source files (`racines.txt`) are saved with **UTF-8 encoding**.
+
+---
+
+**Developed for the 2025-2026 Academic Year.**
