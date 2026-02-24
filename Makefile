@@ -1,4 +1,4 @@
-.PHONY: all clean run visualizer install-vis start-server
+.PHONY: all clean run visualizer install-vis start-server build/ArabicMorphology
 
 # ─── Default build (no visualizer) ──────────────────────────────────────────
 all: build/ArabicMorphology
