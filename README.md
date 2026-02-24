@@ -1,4 +1,4 @@
-# 🌲 Arabic Morphology Engine & Real-Time AVL Visualizer
+# Arabic Morphology Engine & Real-Time AVL Visualizer
 
 ![C++](https://img.shields.io/badge/C++-17-blue.svg)
 ![Node.js](https://img.shields.io/badge/Node.js-22-green.svg)
@@ -9,7 +9,7 @@ A high-performance Arabic morphological analysis system built on a self-balancin
 
 ---
 
-## 🏗 System Architecture
+## System Architecture
 
 The following diagram illustrates the bi-directional synchronization between the high-performance C++ engine and the modern web-based visualizer.
 
@@ -49,16 +49,16 @@ graph TD
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-### 🧠 Morphological Engine
+### Morphological Engine
 
 - **Root Extraction**: Intelligent detection of triliteral roots from complex Arabic words.
 - **Family Generation**: Automatic derivation of words using standard Arabic schemes (_Wazn_).
 - **Corpus Analysis**: Paginated analysis of large text files in Strict or Discovery modes.
 - **Multi-language Support**: Full UI support for **Arabic**, **English**, and **French**.
 
-### 🎨 Real-Time Visualizer
+### Real-Time Visualizer
 
 - **Smooth Animations**: Powered by **D3.js** with sequential step-by-step tree balancing.
 - **Apple-Style Aesthetics**: Premium dark glassmorphism UI with micro-animations.
@@ -67,7 +67,7 @@ graph TD
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -109,7 +109,7 @@ Visit **[http://localhost:3000](http://localhost:3000)** in your browser.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```text
 .
@@ -128,7 +128,7 @@ Visit **[http://localhost:3000](http://localhost:3000)** in your browser.
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 - **Backend**: C++17 (Performance & Data Structures)
 - **Bridge**: Node.js & WebSockets (Real-time I/O)
