@@ -1,0 +1,122 @@
+\documentclass[12pt,a4paper]{article}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{amsmath, amssymb}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{booktabs} 
+\usepackage{array}
+\usepackage{multirow}
+
+\geometry{margin=2.5cm}
+
+% --- Configuration du code ---
+\lstset{
+  language=C++,
+  basicstyle=\small\ttfamily,
+  keywordstyle=\color{blue},
+  stringstyle=\color{red},
+  commentstyle=\color{green!60!black},
+  breaklines=true,
+  frame=single,
+  showstringspaces=false
+}
+
+\title{Rapport Technique Approfondi : Système de Gestion Morphologique Arabe}
+\author{Option : 1ING GLSI}
+\date{Année Universitaire 2025-2026}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+L'objectif de ce projet est de concevoir un moteur de recherche et de génération morphologique pour la langue arabe, en exploitant le modèle "Racine-Schème". Ce document détaille les choix algorithmiques, les structures de données complexes mises en œuvre (Arbres AVL, Tables de hachage multiples) ainsi qu'une analyse exhaustive de leurs performances.
+
+\section{Architecture des Structures de Données}
+
+\subsection{Arbre AVL : Gestion Dynamique du Lexique}
+Le choix de l'\textbf{Arbre AVL} (\texttt{AVLTree.h}) répond à la nécessité d'un dictionnaire de racines évolutif.
+\begin{itemize}
+	\item \textbf{Équilibrage Strict :} Contrairement aux arbres binaires classiques, l'AVL garantit que la différence de hauteur entre deux sous-arbres ne dépasse jamais 1. Cela évite la dégénérescence en liste chaînée dans le cas de racines insérées par ordre alphabétique.
+	\item \textbf{Stockage des Familles :} Chaque nœud contient une structure \texttt{vector<DerivedWord>}, permettant de lier une racine à l'ensemble des mots détectés dans le corpus, avec leurs fréquences respectives.
+\end{itemize}
+
+
+
+\subsection{Table de Hachage à Multiples Index (Schemes)}
+Pour les schèmes (\texttt{schemeHashTable.h}), nous avons implémenté une table de hachage à \textbf{chaînage séparé} utilisant trois indexations distinctes pour optimiser les performances de recherche selon le contexte :
+\begin{enumerate}
+	\item \textbf{Index par Nom :} Pour une récupération directe (ex: "maF3ouL").
+	\item \textbf{Index par Pattern :} Pour vérifier si une structure morphologique existe déjà.
+	\item \textbf{Index par Longueur :} Un tableau de listes (\texttt{lengthTable[30]}) qui permet au moteur d'analyse de ne tester que les schèmes compatibles avec la taille du mot traité, réduisant drastiquement le nombre de comparaisons.
+\end{enumerate}
+
+\section{Description des Algorithmes et Fonctionnalités}
+
+\subsection{Génération Morphologique (Forward)}
+L'algorithme de génération est une fonction de transformation $f(R, S) \rightarrow M$.
+\begin{itemize}
+	\item \textbf{Processus :} Il décompose le schème en caractères UTF-8. À chaque rencontre des marqueurs '1', '2' ou '3', il injecte le radical correspondant de la racine.
+	\item \textbf{Traitement de la Shadda :} Une étape de prétraitement (\texttt{expandShadda}) est appliquée. Si une Shadda est détectée, la lettre la précédant est dupliquée pour l'analyse, garantissant que le mot généré respecte les règles de gémination arabe.
+\end{itemize}
+
+\subsection{Analyseur de Corpus et Apprentissage}
+L'analyseur (\texttt{CorpusAnalyzer.h}) parcourt des fichiers textes. Pour chaque mot, il tente de "deviner" la racine via les schèmes connus.
+\begin{itemize}
+	\item \textbf{Mode Apprentissage :} Si une structure correspond à un schème mais que la racine est absente de l'AVL, l'algorithme insère cette nouvelle racine. C'est une fonctionnalité d'auto-enrichissement du dictionnaire.
+\end{itemize}
+
+\section{Analyse Complète des Complexités}
+
+Nous distinguons ici la complexité temporelle (vitesse) et la complexité spatiale (occupation mémoire).
+
+\subsection{Complexité Temporelle (Time Complexity)}
+\begin{table}[h]
+	\centering
+	\small
+	\begin{tabular}{|l|l|l|l|}
+		\hline
+		\textbf{Opération}       & \textbf{Meilleur Cas} & \textbf{Pire Cas}             & \textbf{Justification}                \\
+		\hline
+		Recherche Racine (AVL)   & $O(1)$                & $O(\log n)$                   & Arbre toujours équilibré.             \\
+		\hline
+		Insertion Racine (AVL)   & $O(\log n)$           & $O(\log n)$                   & Inclut le temps de rééquilibrage.     \\
+		\hline
+		Recherche Schème         & $O(1)$                & $O(1 + \alpha)$               & $\alpha$ est le facteur de charge.    \\
+		\hline
+		Extraction de Racine     & $O(1)$                & $O(K_L \cdot L)$              & $K_L$: nb schèmes de longueur $L$.    \\
+		\hline
+		Visualisation de l'Arbre & $O(n)$                & $O(n)$                        & Parcours complet pour le dessin (Qt). \\
+		\hline
+		Analyse Corpus (N mots)  & $O(N \cdot \log n)$   & $O(N \cdot K_L \cdot \log n)$ & Dépend de la diversité des schèmes.   \\
+		\hline
+	\end{tabular}
+\end{table}
+
+\subsection{Complexité Spatiale (Space Complexity)}
+\begin{itemize}
+	\item \textbf{Arbre AVL :} $O(n + D)$ où $n$ est le nombre de racines et $D$ le nombre total de mots dérivés stockés. Chaque nœud utilise des pointeurs intelligents (\texttt{unique\_ptr}), optimisant la libération mémoire.
+	\item \textbf{Table de Hachage :} $O(S)$ où $S$ est le nombre de schèmes. L'utilisation de listes chaînées pour les collisions minimise la mémoire gaspillée par rapport à un adressage ouvert.
+\end{itemize}
+
+\section{Difficultés Rencontrées et Solutions}
+\begin{enumerate}
+	\item \textbf{Sémantique de l'UTF-8 :} La gestion des caractères arabes (2 octets par caractère) rend les fonctions standards comme \texttt{std::string::size()} obsolètes. Nous avons dû implémenter \texttt{StringUtils::splitUTF8} pour itérer correctement sur les glyphes.
+	\item \textbf{Rendu Graphique :} L'affichage d'un Arbre AVL avec des milliers de nœuds dans l'interface Qt a nécessité l'implémentation d'un système de \textbf{Zoom et Pan} (\texttt{ZoomableView}) et d'un calcul de coordonnées récursif pour éviter le chevauchement des nœuds.
+\end{enumerate}
+
+\section{Conclusion}
+Le système atteint un haut degré d'efficacité grâce à la spécialisation des structures de données. L'indexation multiple des schèmes et l'équilibrage logarithmique des racines permettent de traiter des volumes de données importants sans latence perceptible pour l'utilisateur.
+
+\end{document}
+
+
+
+
