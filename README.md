@@ -42,24 +42,66 @@ sudo apt install qt6-base-dev qt6-declarative-dev libqt6widgets6 libgl1-mesa-dev
 
 #### 2. Build the Project
 
-Navigate to the project directory in your terminal:
+You can build the project using the provided `Makefile` from the root directory:
+
+```bash
+make
+```
+
+Alternatively, you can build it manually using CMake:
 
 ```bash
 mkdir build
 cd build
-cmake ..
+cmake ../src
 make
-
 ```
 
 #### 3. Run the Application
 
-```bash
-./ArabicMorphology
+You can run the application using the `Makefile`:
 
+```bash
+make run
 ```
 
-> **Note:** Ensure `racines.txt` and `schemes.txt` are in the same directory as the executable, or load them manually via the UI.
+Or manually from the build directory:
+
+```bash
+cd build
+./ArabicMorphology
+```
+
+> **Note:** The `racines.txt` and `schemes.txt` files are automatically copied to the `build` directory during compilation.
+
+#### 4. Visualizer (Optional)
+
+If you want to run the project with the AVL Tree visualizer:
+
+1. Install the visualizer dependencies:
+
+   ```bash
+   make install-vis
+   ```
+
+2. Build the project with visualizer support:
+
+   ```bash
+   make visualizer
+   ```
+
+3. Start the visualizer server:
+
+   ```bash
+   make start-server &
+   ```
+
+4. Open your browser at `http://localhost:3000`
+5. Run the application:
+
+   ```bash
+   make run
+   ```
 
 ---
 
@@ -68,7 +110,7 @@ make
 #### Option A: Using Qt Creator (Recommended)
 
 1. Open **Qt Creator**.
-2. Go to **File > Open File or Project** and select `CMakeLists.txt`.
+2. Go to **File > Open File or Project** and select `src/CMakeLists.txt`.
 3. Configure the project using your installed Kit (e.g., MinGW or MSVC).
 4. Click the **Run** button (Green Arrow).
 
@@ -82,7 +124,7 @@ You must use the **Qt command prompt** (e.g., *"Qt 6.x.x (MinGW/MSVC) Command Pr
 ```powershell
 mkdir build
 cd build
-cmake ..
+cmake ../src
 cmake --build . --config Release
 
 ```

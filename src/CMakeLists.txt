@@ -41,5 +41,8 @@ set(PROJECT_SOURCES
 # Create the executable
 add_executable(ArabicMorphology ${PROJECT_SOURCES})
 
+# Copy data files to the build directory
+file(COPY racines.txt schemes.txt DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
 # Link the executable to Qt6
 target_link_libraries(ArabicMorphology PRIVATE Qt6::Widgets)

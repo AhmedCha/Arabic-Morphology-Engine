@@ -1,24 +1,29 @@
-CXX      := g++
-CXXFLAGS := -std=c++17 -Wall -Wextra
-SRC      := src/main.cpp
-DATADIR  := src
+.PHONY: all clean run visualizer install-vis start-server
 
 # ─── Default build (no visualizer) ──────────────────────────────────────────
-all: morphology-engine
+all: build/ArabicMorphology
 
-morphology-engine: $(SRC)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+build/ArabicMorphology:
+	mkdir -p build
+	cd build && cmake ../src
+	$(MAKE) -C build
+
+# ─── Run the application ─────────────────────────────────────────────────────
+run: all
+	cd build && ./ArabicMorphology
 
 # ─── Visualizer build (emits JSON events to /tmp/avl_events.jsonl) ───────────
-visualizer: src/main.cpp
-	$(CXX) $(CXXFLAGS) -DAVL_VISUALIZER -o morphology-engine-vis $^
+visualizer:
+	mkdir -p build
+	cd build && cmake -DCMAKE_CXX_FLAGS="-DAVL_VISUALIZER" ../src
+	$(MAKE) -C build
 	@echo ""
-	@echo "  ✔ Built morphology-engine-vis with visualizer support"
+	@echo "  ✔ Built ArabicMorphology with visualizer support"
 	@echo ""
 	@echo "  To run:"
-	@echo "    1. cd visualizer && npm install && node server.js &"
+	@echo "    1. make start-server &"
 	@echo "    2. open http://localhost:3000"
-	@echo "    3. ./morphology-engine-vis"
+	@echo "    3. make run"
 	@echo ""
 
 # ─── Install node deps ───────────────────────────────────────────────────────
@@ -31,6 +36,4 @@ start-server:
 
 # ─── Clean ───────────────────────────────────────────────────────────────────
 clean:
-	rm -f morphology-engine morphology-engine-vis /tmp/avl_events.jsonl /tmp/avl_cmd.txt
-
-.PHONY: all visualizer install-vis start-server clean
+	rm -rf build /tmp/avl_events.jsonl /tmp/avl_cmd.txt
