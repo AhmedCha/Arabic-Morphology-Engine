@@ -14,6 +14,57 @@
 
 using namespace std;
 
+// ─── Real-time Visualizer Event Logger ──────────────────────────────────────
+// Define AVL_VISUALIZER at compile time to enable: g++ -DAVL_VISUALIZER ...
+#ifdef AVL_VISUALIZER
+  #include <mutex>
+  #include <chrono>
+
+  static const char* AVL_EVENTS_FILE = "/tmp/avl_events.jsonl";
+  static mutex       avl_log_mutex;
+
+  // Helper: convert any key type to string for JSON
+  template<typename U>
+  static string to_string_avl(const U& val) {
+    ostringstream oss;
+    oss << val;
+    return oss.str();
+  }
+
+  // Escape a string for JSON
+  static string avl_json_escape(const string& s) {
+    string out;
+    for (unsigned char c : s) {
+      if (c == '"')       out += "\\\"";
+      else if (c == '\\') out += "\\\\";
+      else                out += (char)c;
+    }
+    return out;
+  }
+
+  // Forward-declare so we can use it in AVLTree methods
+  #define AVL_LOG(json_str) do { \
+    lock_guard<mutex> _lg(avl_log_mutex); \
+    ofstream _f(AVL_EVENTS_FILE, ios::app); \
+    if (_f) { _f << (json_str) << "\n"; } \
+  } while(0)
+
+  // Serialize a node subtree to compact JSON string
+  template<typename NodeT>
+  static string avl_node_json(NodeT* node) {
+    if (!node) return "null";
+    ostringstream oss;
+    oss << "{\"key\":\"" << avl_json_escape(to_string_avl(node->key)) << "\","
+        << "\"height\":" << node->height << ","
+        << "\"left\":"  << avl_node_json(node->left)  << ","
+        << "\"right\":" << avl_node_json(node->right) << "}";
+    return oss.str();
+  }
+
+#else
+  #define AVL_LOG(json_str) /* no-op */
+#endif
+
 struct DerivedWord {
   string word;
   int frequency;
@@ -77,6 +128,15 @@ template <typename T> class AVLTree {
       x->height
         = max(height(x->left), height(x->right)) + 1;
 
+      // Log rotation event
+      #ifdef AVL_VISUALIZER
+      {
+        ostringstream _oss;
+        _oss << "{\"type\":\"rotation\",\"rotation\":\"LL\",\"pivot\":\"" << avl_json_escape(to_string_avl(x->key)) << "\"}";
+        AVL_LOG(_oss.str());
+      }
+      #endif
+
       // Return new root
       return x;
     }
@@ -95,6 +155,15 @@ template <typename T> class AVLTree {
         = max(height(x->left), height(x->right)) + 1;
       y->height
         = max(height(y->left), height(y->right)) + 1;
+
+      // Log rotation event
+      #ifdef AVL_VISUALIZER
+      {
+        ostringstream _oss;
+        _oss << "{\"type\":\"rotation\",\"rotation\":\"RR\",\"pivot\":\"" << avl_json_escape(to_string_avl(y->key)) << "\"}";
+        AVL_LOG(_oss.str());
+      }
+      #endif
 
       // Return new root
       return y;
@@ -350,12 +419,44 @@ template <typename T> class AVLTree {
 
     // Function to insert a key into the AVL tree
     void insert(T key) {
+      #ifdef AVL_VISUALIZER
+      {
+        ostringstream _oss;
+        _oss << "{\"type\":\"node_inserted\",\"key\":\"" << avl_json_escape(to_string_avl(key)) << "\"}";
+        AVL_LOG(_oss.str());
+      }
+      #endif
       root = insert(root, key);
+      #ifdef AVL_VISUALIZER
+      {
+        ostringstream _oss;
+        _oss << "{\"type\":\"snapshot\",\"op\":\"insert\",\"key\":\"" 
+             << avl_json_escape(to_string_avl(key)) << "\","
+             << "\"tree\":" << avl_node_json(root) << "}";
+        AVL_LOG(_oss.str());
+      }
+      #endif
     }
 
-    // Function to search for a key in the AVL tree
+    // Function to delete a key from the AVL tree
     void remove(T key) {
+      #ifdef AVL_VISUALIZER
+      {
+        ostringstream _oss;
+        _oss << "{\"type\":\"node_deleting\",\"key\":\"" << avl_json_escape(to_string_avl(key)) << "\"}";
+        AVL_LOG(_oss.str());
+      }
+      #endif
       root = deleteNode(root, key);
+      #ifdef AVL_VISUALIZER
+      {
+        ostringstream _oss;
+        _oss << "{\"type\":\"snapshot\",\"op\":\"delete\",\"key\":\"" 
+             << avl_json_escape(to_string_avl(key)) << "\","
+             << "\"tree\":" << avl_node_json(root) << "}";
+        AVL_LOG(_oss.str());
+      }
+      #endif
     }
 
     // Function to print the inorder traversal of the AVL
