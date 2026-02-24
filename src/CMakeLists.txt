@@ -6,6 +6,7 @@ project(ArabicMorphology VERSION 1.0 LANGUAGES CXX)
 # Require C++17 standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # -------------------------------------------------------------------
 # Qt6 Configuration
