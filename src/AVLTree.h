@@ -6,6 +6,7 @@
 #include <vector>
 #include <sstream>
 #include <string>
+#include <iostream>
 #include <functional> 
 
 #include "StringUtils.h"
@@ -494,6 +495,18 @@ template <typename T> class AVLTree {
 
     int getOperationCount() const { return operationCount; }
     int getRotationCount() const { return rotationCount; }
+
+    void showFamily(const T& key) const {
+      AVLNode<T>* node = search(root, key);
+      if (node != nullptr) {
+        cout << "\nFamily for " << key << ":" << endl;
+        for (const auto& dw : node->derivedWords) {
+          cout << " - " << dw.word << " (" << dw.frequency << ")" << endl;
+        }
+      } else {
+        cout << "\nRoot not found!" << endl;
+      }
+    }
 
     vector<DerivedWord> getFamily(const T& key) const {
       AVLNode<T>* node = search(root, key);
