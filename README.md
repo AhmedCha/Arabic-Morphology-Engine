@@ -1,33 +1,44 @@
-# Arabic Morphology Engine (Root-Pattern System) 🕌
+# Arabic Morphology Engine (Root-Pattern System)
 
 An advanced algorithmic tool for Arabic Natural Language Processing (NLP). This project implements the **Root-Pattern (Racine-Schème)** morphological model using high-performance data structures including **AVL Trees** for root indexing and **Hash Tables** for pattern management.
 
-Designed for the **Algorithmic Project (1ING GLSI)**.
+Designed for the **Algorithmic Project (1ING)**.
 
-## ✨ Features
+## Technologies Used
+
+![C++](https://img.shields.io/badge/c++-%2300599C.svg?style=for-the-badge&logo=c%2B%2B&logoColor=white)
+![Qt](https://img.shields.io/badge/Qt-%2341CD52.svg?style=for-the-badge&logo=Qt&logoColor=white)
+![CMake](https://img.shields.io/badge/CMake-%23008FBA.svg?style=for-the-badge&logo=cmake&logoColor=white)
+![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
+![Express.js](https://img.shields.io/badge/express.js-%23404d59.svg?style=for-the-badge&logo=express&logoColor=%2361DAFB)
+![HTML5](https://img.shields.io/badge/html5-%23E34F26.svg?style=for-the-badge&logo=html5&logoColor=white)
+![CSS3](https://img.shields.io/badge/css3-%231572B6.svg?style=for-the-badge&logo=css3&logoColor=white)
+![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E)
+
+## Features
 
 * **Morphological Generation:** Automatically generates derived words by combining a trilateral root (e.g., *K-T-B*) with a specific pattern (e.g., *maF3ouL*).
 * **Reverse Extraction:** Decomposes a given Arabic word to identify its root and morphological pattern.
 * **Corpus Analysis:** Processes large text files to extract roots, calculate word frequencies, and discover new potential roots using a "Strict" vs "Learning" mode.
 * **Interactive Visualization:**
-* Dynamic **AVL Tree** visualization of roots with Zoom/Pan capabilities.
-* Tabular view of morphological families.
-
+  * Dynamic **AVL Tree** visualization of roots with Zoom/Pan capabilities.
+  * Tabular view of morphological families.
 * **Multilingual UI:** Full interface support for English, French, and Arabic.
 
-## 🛠 Prerequisites
+## Prerequisites
 
 Before building, ensure you have the following installed on your system:
 
 1. **C++ Compiler:** Supporting **C++17** or higher (GCC, Clang, or MSVC).
 2. **CMake:** Version **3.16** or later.
-3. **Qt6 Framework:** specifically the **Qt Widgets** module.
+3. **Qt6 Framework:** Specifically the **Qt Widgets** module.
+4. **Node.js:** (Optional) Required only if you intend to run the web-based AVL Tree visualizer.
 
 ---
 
-## 📦 Installation & Compilation
+## Installation and Compilation
 
-### 🐧 Linux (Ubuntu/Debian)
+### Linux (Ubuntu/Debian)
 
 #### 1. Install Dependencies
 
@@ -37,7 +48,6 @@ You need the build tools, CMake, and Qt6 libraries.
 sudo apt update
 sudo apt install build-essential cmake
 sudo apt install qt6-base-dev qt6-declarative-dev libqt6widgets6 libgl1-mesa-dev poppler-utils
-
 ```
 
 #### 2. Build the Project
@@ -57,8 +67,43 @@ cmake ../src
 make
 ```
 
-#### 3. Run the Application
+### Windows
 
+#### Option A: Using Qt Creator (Recommended)
+
+1. Open **Qt Creator**.
+2. Go to **File > Open File or Project** and select `src/CMakeLists.txt`.
+3. Configure the project using your installed Kit (e.g., MinGW or MSVC).
+4. Click the **Run** button (Green Arrow).
+
+#### Option B: Command Line (PowerShell / CMD)
+
+You must use the **Qt command prompt** (e.g., *"Qt 6.x.x (MinGW/MSVC) Command Prompt"*) to ensure environment variables are set correctly.
+
+1. Navigate to the project folder.
+2. Run the build commands:
+
+```powershell
+mkdir build
+cd build
+cmake ../src
+cmake --build . --config Release
+```
+
+**Fixing Missing DLL Errors:**
+If you try to run the `.exe` directly from the folder and get "Missing Qt6Core.dll" errors, run the deployment tool:
+
+```powershell
+windeployqt.exe Release\ArabicMorphology.exe
+```
+
+---
+
+## How to Run
+
+### Running the Main Application
+
+**On Linux:**
 You can run the application using the `Makefile`:
 
 ```bash
@@ -74,7 +119,10 @@ cd build
 
 > **Note:** The `racines.txt` and `schemes.txt` files are automatically copied to the `build` directory during compilation.
 
-#### 4. Visualizer (Optional)
+**On Windows:**
+Run the executable located in the `Release` folder.
+
+### Running the Visualizer (Optional)
 
 If you want to run the project with the AVL Tree visualizer:
 
@@ -105,45 +153,9 @@ If you want to run the project with the AVL Tree visualizer:
 
 ---
 
-### 🪟 Windows
+## Complete Project Structure
 
-#### Option A: Using Qt Creator (Recommended)
-
-1. Open **Qt Creator**.
-2. Go to **File > Open File or Project** and select `src/CMakeLists.txt`.
-3. Configure the project using your installed Kit (e.g., MinGW or MSVC).
-4. Click the **Run** button (Green Arrow).
-
-#### Option B: Command Line (PowerShell / CMD)
-
-You must use the **Qt command prompt** (e.g., *"Qt 6.x.x (MinGW/MSVC) Command Prompt"*) to ensure environment variables are set correctly.
-
-1. Navigate to the project folder.
-2. Run the build commands:
-
-```powershell
-mkdir build
-cd build
-cmake ../src
-cmake --build . --config Release
-
-```
-
-1. **Fixing Missing DLL Errors:**
-If you try to run the `.exe` directly from the folder and get "Missing Qt6Core.dll" errors, run the deployment tool:
-
-```powershell
-windeployqt.exe Release\ArabicMorphology.exe
-
-```
-
-1. Run the executable located in the `Release` folder.
-
----
-
-## 📂 Complete Project Structure
-
-### 🧠 Core Logic & Data Structures
+### Core Logic & Data Structures
 
 | File | Description |
 | --- | --- |
@@ -153,18 +165,18 @@ windeployqt.exe Release\ArabicMorphology.exe
 | **`corpusAnalyzer.h`** | Logic for parsing text files, counting word frequencies, and auto-learning new roots. |
 | **`StringUtils.h`** | Utilities for handling UTF-8 Arabic characters (resolves the 2-byte char issue in C++). |
 
-### 🖥️ User Interface (Qt6)
+### User Interface (Qt6)
 
 | File | Description |
 | --- | --- |
 | **`main.cpp`** | Application entry point. Initializes Qt and loads initial data. |
-| **`mainwindow.h` / `.cpp**` | Main container for the GUI. Handles the menu bar, language switching, and the tab widget. |
+| **`mainwindow.h` / `.cpp`** | Main container for the GUI. Handles the menu bar, language switching, and the tab widget. |
 | **`morphologyTab.h`** | UI tab for generating words and reverse-extracting roots. |
 | **`rootsTab.h`** | UI tab for viewing/editing roots. Contains the `ZoomableView` logic to render the AVL Tree graphically. |
 | **`schemesTab.h`** | UI tab for managing and viewing the hash table of morphological patterns. |
 | **`corpusTab.h`** | UI tab for loading text files, running the analyzer, and displaying statistics/new roots. |
 
-### ⚙️ Configuration
+### Configuration
 
 | File | Description |
 | --- | --- |
@@ -172,16 +184,16 @@ windeployqt.exe Release\ArabicMorphology.exe
 
 ---
 
-## 🧩 Algorithms Overview
+## Algorithms Overview
 
 ### 1. Root Storage (AVL Tree)
 
-* **Why:** Arabic roots are numerous. We need  search time to keep the interface responsive.
+* **Why:** Arabic roots are numerous. We need fast search time to keep the interface responsive.
 * **How:** The tree auto-balances using rotations (Left/Right) whenever a root is inserted.
 
 ### 2. Pattern Matching (Hash Table)
 
-* **Why:** Patterns need to be accessed instantly  during generation.
+* **Why:** Patterns need to be accessed instantly during generation.
 * **Optimization:** We maintain a `lengthTable` array. When analyzing a word of length 6, we only check patterns that produce 6-letter words, significantly reducing processing time.
 
 ### 3. Generation Logic
@@ -193,22 +205,21 @@ The engine replaces numerical placeholders in patterns with root letters:
 * Result: `m a k t u b` (maktoub)
 * *Includes handling for Shadda (gemination).*
 
-## ⚠️ Troubleshooting
+## Troubleshooting
 
-**1. "Could not find a package configuration file provided by 'Qt6'..."**
+### 1. "Could not find a package configuration file provided by 'Qt6'..."
 
 * **Solution:** Make sure you have installed `qt6-base-dev` (Linux) or that your `CMAKE_PREFIX_PATH` includes the path to your Qt installation (Windows).
 
-**2. "GL/gl.h: No such file or directory" (Linux)**
+### 2. "GL/gl.h: No such file or directory" (Linux)
 
 * **Solution:** You are missing OpenGL development files. Run:
 
 ```bash
 sudo apt install libgl1-mesa-dev
-
 ```
 
-**3. Arabic text appears as question marks (???)**
+### 3. Arabic text appears as question marks (???)
 
 * **Solution:** The application uses UTF-8. Ensure your source files (`racines.txt`) are saved with **UTF-8 encoding**.
 
