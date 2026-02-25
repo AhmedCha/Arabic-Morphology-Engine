@@ -263,7 +263,16 @@ inline void manageSchemes(SchemeHashTable& schemes) {
 
       case 3: // VIEW
         printAsciiHeader(Tr("CURRENT SCHEMES", "SCHEMES ACTUELS", "الأوزان الحالية"));
-        schemes.display();
+        {
+            auto all = schemes.getAllSchemes();
+            if (all.empty()) {
+                cout << Tr("No schemes found.", "Aucun schème trouvé.", "لا توجد أوزان.") << endl;
+            } else {
+                for (const auto& s : all) {
+                    cout << " - " << s.name << " : " << s.pattern << endl;
+                }
+            }
+        }
         break;
     }
     pauseScreen();

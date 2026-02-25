@@ -1,0 +1,27 @@
+# Binaries
+morphology-engine
+morphology-engine-vis
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temp / Visualizer output
+/tmp/avl_events.jsonl
+/tmp/avl_cmd.txt
+*.jsonl
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+build/

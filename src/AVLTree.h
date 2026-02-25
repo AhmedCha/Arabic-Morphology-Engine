@@ -1,35 +1,85 @@
-// Code inspired from https://www.geeksforgeeks.org/cpp/cpp-program-to-implement-avl-tree/
-
 #ifndef AVLTREE_H  
 #define AVLTREE_H 
 
 #include <algorithm>
-#include <iostream>
 #include <fstream>  
 #include <vector>
 #include <sstream>
 #include <string>
+#include <iostream>
+#include <functional> 
 
-#include "language.h" 
+#include "StringUtils.h"
 
 using namespace std;
 
+#ifdef AVL_VISUALIZER
+  #include <mutex>
+  #include <chrono>
+
+  static const char* AVL_EVENTS_FILE = "/tmp/avl_events.jsonl";
+  static mutex       avl_log_mutex;
+
+  // Helper: convert any key type to string for JSON
+  template<typename U>
+  static string to_string_avl(const U& val) {
+    ostringstream oss;
+    oss << val;
+    return oss.str();
+  }
+
+  // Escape a string for JSON
+  static string avl_json_escape(const string& s) {
+    string out;
+    for (unsigned char c : s) {
+      if (c == '"')       out += "\\\"";
+      else if (c == '\\') out += "\\\\";
+      else                out += (char)c;
+    }
+    return out;
+  }
+
+  // Forward-declare so we can use it in AVLTree methods
+  #define AVL_LOG(json_str) do { \
+    lock_guard<mutex> _lg(avl_log_mutex); \
+    ofstream _f(AVL_EVENTS_FILE, ios::app); \
+    if (_f) { _f << (json_str) << "\n"; } \
+  } while(0)
+
+  // Serialize a node subtree to compact JSON string
+  template<typename NodeT>
+  static string avl_node_json(NodeT* node) {
+    if (!node) return "null";
+    ostringstream oss;
+    oss << "{\"key\":\"" << avl_json_escape(to_string_avl(node->key)) << "\","
+        << "\"height\":" << node->height << ","
+        << "\"left\":"  << avl_node_json(node->left)  << ","
+        << "\"right\":" << avl_node_json(node->right) << "}";
+    return oss.str();
+  }
+
+#else
+  #define AVL_LOG(json_str) /* no-op */
+#endif
+
 struct DerivedWord {
   string word;
+  string scheme;
   int frequency;
-  DerivedWord(string w, int f = 1) : word(w), frequency(f) {}
+  DerivedWord(const string& w, const string& s = "", int f = 1) : word(w), scheme(s), frequency(f) {}
+  DerivedWord(const string& w, int f) : word(w), scheme(""), frequency(f) {}
 };
+
 
 template <typename T> class AVLNode {
   public:
     T key; 
     vector<DerivedWord> derivedWords;
-    AVLNode* left; 
-    AVLNode* right; 
+    AVLNode<T>* left; 
+    AVLNode<T>* right; 
     int height; 
 
-    // Constructor to initialize a node with a given key
-    AVLNode(T k)
+    AVLNode(const T& k)
       : key(k)
         , left(nullptr)
         , right(nullptr)
@@ -38,223 +88,215 @@ template <typename T> class AVLNode {
   }
 };
 
-// Template class representing the AVL tree
 template <typename T> class AVLTree {
   private:
-    // Pointer to the root of the tree
+    mutable int operationCount = 0;
+    mutable int rotationCount = 0;
+    string logFilePath = "tree_log.txt";
+
+    void logAction(const string& action, const T& key) {
+      ofstream logFile(logFilePath, ios::app);
+      if (logFile.is_open()) {
+        logFile << "Action: " << action << " | Key: " << key 
+          << " | Total Ops: " << operationCount 
+          << " | Total Rotations: " << rotationCount << "\n";
+        logFile.close();
+      }
+    }
+
     AVLNode<T>* root;
     string filename;
 
-    // function to get the height of a node
-    int height(AVLNode<T>* node)
+    void destroyTree(AVLNode<T>* node) {
+      if (node != nullptr) {
+        destroyTree(node->left);
+        destroyTree(node->right);
+        delete node;
+      }
+    }
+
+    int height(AVLNode<T>* node) const
     {
       if (node == nullptr)
         return 0;
       return node->height;
     }
 
-    // function to get the balance factor of a node
-    int balanceFactor(AVLNode<T>* node)
+    int balanceFactor(AVLNode<T>* node) const
     {
       if (node == nullptr)
         return 0;
       return height(node->left) - height(node->right);
     }
 
-    // function to perform a right rotation on a subtree
-    AVLNode<T>* rightRotate(AVLNode<T>* y)
+    // Pass by reference so parent's pointer is updated instantly!
+    void rightRotate(AVLNode<T>*& y)
     {
-      AVLNode<T>* x = y->left;
-      AVLNode<T>* T2 = x->right;
+      addOp(); AVLNode<T>* x = y->left;
+      addOp(); AVLNode<T>* T2 = x->right;
 
-      // Perform rotation
-      x->right = y;
-      y->left = T2;
+      addOp(); y->left = T2;
+      addOp(); x->right = y;
 
-      // Update heights
-      y->height
-        = max(height(y->left), height(y->right)) + 1;
-      x->height
-        = max(height(x->left), height(x->right)) + 1;
+      y->height = max(height(y->left), height(y->right)) + 1;
+      x->height = max(height(x->left), height(x->right)) + 1;
 
-      // Return new root
-      return x;
+      y = x; // Instantly update the parent's pointer to the new root
+      addRot(); // Safe to animate now!
     }
 
-    // function to perform a left rotation on a subtree
-    AVLNode<T>* leftRotate(AVLNode<T>* x)
+    // Pass by reference so parent's pointer is updated instantly!
+    void leftRotate(AVLNode<T>*& x)
     {
-      AVLNode<T>* y = x->right;
-      AVLNode<T>* T2 = y->left;
+      addOp(); AVLNode<T>* y = x->right;
+      addOp(); AVLNode<T>* T2 = y->left;
 
-      y->left = x;
-      x->right = T2;
+      addOp(); x->right = T2;
+      addOp(); y->left = x;
 
-      // Update heights
-      x->height
-        = max(height(x->left), height(x->right)) + 1;
-      y->height
-        = max(height(y->left), height(y->right)) + 1;
+      x->height = max(height(x->left), height(x->right)) + 1;
+      y->height = max(height(y->left), height(y->right)) + 1;
 
-      // Return new root
-      return y;
+      x = y; // Instantly update the parent's pointer to the new root
+      addRot(); // Safe to animate now!
     }
 
-    // function to insert a new key into the subtree rooted
-    // with node
-    AVLNode<T>* insert(AVLNode<T>* node, T key)
-    {
-      // Perform the normal BST insertion
-      if (node == nullptr)
-        return new AVLNode<T>(key);
+    void insert(AVLNode<T>*& node, const T& key)
+    {            
+      addOp(); 
+      if (node == root) {
+        logAction("Insert", key);
+      }
+      
+      if (node == nullptr) {
+        addOp();
+        node = new AVLNode<T>(key); // Updates parent's pointer instantly
+        if (animateCb) animateCb(); // Safe to animate appearance
+        return; 
+      }
 
-      if (key < node->key)
-        node->left = insert(node->left, key);
-      else if (key > node->key)
-        node->right = insert(node->right, key);
-      else
-        return node;
+      addOp();
+      if (key < node->key) {
+        insert(node->left, key);
+      } else {
+        addOp();
+        if (key > node->key) {
+          insert(node->right, key);
+        } else {
+          return; // Duplicate
+        }
+      }
 
-      // Update height of this ancestor node
-      node->height = 1
-        + max(height(node->left),
-            height(node->right));
+      node->height = 1 + max(height(node->left), height(node->right));
 
-      // Get the balance factor of this ancestor node
       int balance = balanceFactor(node);
 
-      // If this node becomes unbalanced, then there are 4
-      // cases
-
-      // Left heavy
       if (balance > 1) {
+        addOp();
         if (balanceFactor(node->left) >= 0) {
-          return rightRotate(node);          // LL
+          rightRotate(node);
         } else {
-          node->left = leftRotate(node->left); // LR
-          return rightRotate(node);
+          leftRotate(node->left);
+          rightRotate(node);
         }
-      }
-
-      // Right heavy
-      if (balance < -1) {
+      } else if (balance < -1) {
+        addOp();
         if (balanceFactor(node->right) <= 0) {
-          return leftRotate(node);           // RR
+          leftRotate(node);
         } else {
-          node->right = rightRotate(node->right); // RL
-          return leftRotate(node);
+          rightRotate(node->right);
+          leftRotate(node);
         }
       }
-
-      return node;
     }
 
-    // function to find the node with the minimum key value
-    AVLNode<T>* minValueNode(AVLNode<T>* node)
+    AVLNode<T>* minValueNode(AVLNode<T>* node) const
     {
       AVLNode<T>* current = node;
-      while (current->left != nullptr)
+      while (current && current->left != nullptr) {
+        addOp(); 
         current = current->left;
+      }
       return current;
     }
 
-    // function to delete a key from the subtree rooted with
-    // root
-    AVLNode<T>* deleteNode(AVLNode<T>* root, T key)
+    void deleteNode(AVLNode<T>*& rootNode, const T& key)
     {
-      // Perform standard BST delete
-      if (root == nullptr)
-        return root;
+      addOp();
+      if (rootNode == root) { 
+        logAction("Delete", key);
+      }
+      if (rootNode == nullptr) return;
 
-      if (key < root->key)
-        root->left = deleteNode(root->left, key);
-      else if (key > root->key)
-        root->right = deleteNode(root->right, key);
-      else {
-        // Node with only one child or no child
-        if ((root->left == nullptr) || (root->right == nullptr)) {
-          AVLNode<T>* temp = root->left ? root->left : root->right;
+      addOp();
+      if (key < rootNode->key) {
+        deleteNode(rootNode->left, key);
+      } else {
+        addOp();
+        if (key > rootNode->key) {
+          deleteNode(rootNode->right, key);
+        } else {
+          addOp();
+          if ((rootNode->left == nullptr) || (rootNode->right == nullptr)) {
+            AVLNode<T>* temp = rootNode->left ? rootNode->left : rootNode->right;
 
-          if (temp == nullptr) {
-            delete root;
-            return nullptr;
-          } else {
-            AVLNode<T>* old = root;
-            root = temp;
-            delete old;
+            if (temp == nullptr) {
+              addOp();
+              AVLNode<T>* nodeToDelete = rootNode;
+              rootNode = nullptr; // Clear parent's pointer FIRST
+              if (animateCb) animateCb(); // Safe to animate
+              delete nodeToDelete; // Free memory safely
+              return;
+            } else {
+              addOp();
+              AVLNode<T>* nodeToDelete = rootNode;
+              rootNode = temp; // Update parent's pointer FIRST
+              if (animateCb) animateCb(); // Safe to animate
+              delete nodeToDelete; // Free memory safely
+            }
+          }
+          else {
+            AVLNode<T>* temp = minValueNode(rootNode->right);
+            addOp(); rootNode->key = temp->key;
+            addOp(); rootNode->derivedWords = temp->derivedWords; 
+            if (animateCb) animateCb(); 
+            
+            deleteNode(rootNode->right, temp->key);
           }
         }
-
-        else {
-          AVLNode<T>* temp = minValueNode(root->right);
-          root->key = temp->key;
-          root->derivedWords = temp->derivedWords; 
-          root->right = deleteNode(root->right, temp->key);
-        }
       }
 
-      if (root == nullptr)
-        return root;
+      if (rootNode == nullptr) return;
 
-      // Update height of the current node
-      root->height = 1
-        + max(height(root->left),
-            height(root->right));
+      rootNode->height = 1 + max(height(rootNode->left), height(rootNode->right));
 
-      // Get the balance factor of this node
-      int balance = balanceFactor(root);
+      int balance = balanceFactor(rootNode);
 
-      // If this node becomes unbalanced, then there are 4
-      // cases
-
-      // Left Left Case
-      if (balance > 1 && balanceFactor(root->left) >= 0)
-        return rightRotate(root);
-
-      // Left Right Case
-      if (balance > 1 && balanceFactor(root->left) < 0) {
-        root->left = leftRotate(root->left);
-        return rightRotate(root);
+      addOp();
+      if (balance > 1 && balanceFactor(rootNode->left) >= 0) {
+        rightRotate(rootNode);
+        return;
       }
-
-      // Right Right Case
-      if (balance < -1 && balanceFactor(root->right) <= 0)
-        return leftRotate(root);
-
-      // Right Left Case
-      if (balance < -1
-          && balanceFactor(root->right) > 0) {
-        root->right = rightRotate(root->right);
-        return leftRotate(root);
+      addOp();
+      if (balance > 1 && balanceFactor(rootNode->left) < 0) {
+        leftRotate(rootNode->left);
+        rightRotate(rootNode);
+        return;
       }
-
-      return root;
-    }
-
-    // function to search for a key in the subtree rooted
-    // with root
-    AVLNode<T>* search(AVLNode<T>* node, T key) {
-      if (node == nullptr || node->key == key) return node;
-      if (key < node->key) return search(node->left, key);
-      return search(node->right, key);
-    }
-
-    // Helper for Recursive Delete (Destructor)
-    void clear(AVLNode<T>* node) {
-      if(node) { clear(node->left); clear(node->right); delete node; }
-    }
-
-    // function to perform inorder traversal of the tree
-    void inorder(AVLNode<T>* root)
-    {
-      if (root != nullptr) {
-        inorder(root->left);
-        cout << root->key << " ";
-        inorder(root->right);
+      addOp();
+      if (balance < -1 && balanceFactor(rootNode->right) <= 0) {
+        leftRotate(rootNode);
+        return;
+      }
+      addOp();
+      if (balance < -1 && balanceFactor(rootNode->right) > 0) {
+        rightRotate(rootNode->right);
+        leftRotate(rootNode);
+        return;
       }
     }
 
-    void saveToFileHelper(AVLNode<T>* node, ofstream& file) {
+    void saveToFileHelper(AVLNode<T>* node, ofstream& file) const {
       if (node != nullptr) {
         saveToFileHelper(node->left, file);
 
@@ -269,70 +311,105 @@ template <typename T> class AVLTree {
       }
     }
 
+    void exportCSVHelper(AVLNode<T>* node, ofstream& file) const {
+      if (node) {
+        exportCSVHelper(node->left, file);
+        for(const auto& dw : node->derivedWords) {
+          file << "\"" << node->key << "\",\"" << dw.word << "\"," << dw.frequency << "\n"; 
+        }
+        exportCSVHelper(node->right, file);
+      }
+    }
+
   public:
-    AVLNode<T>* getRoot() {
+    std::function<void()> updateStatsCb = nullptr;
+    std::function<void()> animateCb = nullptr;
+
+    void addOp() const {
+        operationCount++;
+        if (updateStatsCb) updateStatsCb(); 
+    }
+
+    void addRot() const {
+        rotationCount++;
+        if (updateStatsCb) updateStatsCb();
+        if (animateCb) animateCb(); 
+    }
+
+    AVLNode<T>* getRoot() const {
       return root;
     }
-    // Constructor to initialize the AVL tree
-    AVLTree()
-      : root(nullptr)
-    {
+
+    AVLTree() : root(nullptr) {}
+
+    ~AVLTree() {
+      destroyTree(root);
+      root = nullptr;
     }
 
-    ~AVLTree() { clear(root); }
-
-    void saveToFile(string fname = "") {
+    bool saveToFile(const string& fname = "") {
       if (fname != "") filename = fname;
-      if (filename.empty()) return; 
+      if (filename.empty()) return false; 
 
       ofstream file(filename);
       if (!file.is_open()) {
-        cerr << Tr("✘ Error: Could not open file '", "✘ Erreur : Impossible d'ouvrir le fichier '", "✘ خطأ: تعذر فتح الملف '") 
-             << filename << "'." << endl;
-        return;
+        return false;
       }
       saveToFileHelper(root, file);
       file.close();
-      cout << Tr("✔ Saved roots and derived families to ", 
-                 "✔ Racines et familles dérivées sauvegardées dans ", 
-                 "✔ تم حفظ الجذور والعائلات المشتقة في ") << filename << endl;
+      return true;
     }
 
-    void loadFromFile(string fname) {
+    bool exportToCSV(const string& csvFilename) const {
+      ofstream file(csvFilename);
+      if (file.is_open()) {
+        file << "Root,DerivedWord,Frequency\n"; 
+        exportCSVHelper(root, file);
+        return true;
+      }
+      return false;
+    }
+
+    bool loadFromFile(const string& fname) {
       filename = fname;
       ifstream file(filename);
 
       if (!file.is_open()) {
-        cout << Tr("⚠ Warning: Roots file '", "⚠ Attention : Fichier de racines '", "⚠ تحذير: ملف الجذور '") 
-             << filename 
-             << Tr("' not found. A new one will be created.", "' introuvable. Un nouveau sera créé.", "' غير موجود. سيتم إنشاء ملف جديد.") << endl;
-        return;
+        return false; 
       }
 
-      // Clear existing data before loading
-      clear(root); 
-      root = nullptr;
+      destroyTree(root);
+      root = nullptr; 
 
       string line;
       while (getline(file, line)) {
         if(line.empty()) continue;
+
         stringstream ss(line);
-
         T key;
-        ss >> key; // Read Root
-        root = insert(root, key); // Insert Root
+        ss >> key;
 
-        // Find the node we just inserted to add words to it
+        key = StringUtils::sanitize(key);
+        if (key.empty()) {
+          continue;
+        }
+
+        insert(key);
+
         AVLNode<T>* node = search(root, key);
+        if (node == nullptr) {
+          continue; 
+        }
 
         string word;
         int freq;
-        // Read pairs of Word + Frequency
         while(ss >> word >> freq) {
+          word = StringUtils::sanitize(word);
           node->derivedWords.push_back(DerivedWord(word, freq));
         }
       }
       file.close();
+      return true;
     }
 
     void collectAll(AVLNode<T>* node, vector<T>& result) const {
@@ -348,63 +425,95 @@ template <typename T> class AVLTree {
       return res;
     }
 
-    // Function to insert a key into the AVL tree
-    void insert(T key) {
-      root = insert(root, key);
+    void insert(const T& key) {
+#ifdef AVL_VISUALIZER
+      if (search(key)) {
+        ostringstream _oss;
+        _oss << "{\"type\":\"already_exists\",\"key\":\"" 
+             << avl_json_escape(to_string_avl(key)) << "\"}";
+        AVL_LOG(_oss.str());
+        return;
+      }
+#endif
+      insert(root, key);
+      #ifdef AVL_VISUALIZER
+      {
+        ostringstream _oss;
+        _oss << "{\"type\":\"snapshot\",\"op\":\"insert\",\"key\":\"" 
+             << avl_json_escape(to_string_avl(key)) << "\","
+             << "\"tree\":" << avl_node_json(root) << "}";
+        AVL_LOG(_oss.str());
+      }
+      #endif
     }
 
-    // Function to search for a key in the AVL tree
-    void remove(T key) {
-      root = deleteNode(root, key);
-    }
-
-    // Function to print the inorder traversal of the AVL
-    // tree
-    void printInorder()
-    {
-      inorder(root);
-      cout << endl;
-    }
     
-    bool search(T key) {
+    void remove(const T& key) {
+      deleteNode(root, key);
+      #ifdef AVL_VISUALIZER
+      {
+        ostringstream _oss;
+        _oss << "{\"type\":\"snapshot\",\"op\":\"delete\",\"key\":\"" 
+             << avl_json_escape(to_string_avl(key)) << "\","
+             << "\"tree\":" << avl_node_json(root) << "}";
+        AVL_LOG(_oss.str());
+      }
+      #endif
+    }
+
+    
+    AVLNode<T>* search(AVLNode<T>* node, const T& key) const {
+      addOp(); 
+      if (node == nullptr || node->key == key) return node;
+      
+      addOp(); 
+      if (key < node->key) return search(node->left, key);
+      return search(node->right, key);
+    }
+
+    bool search(const T& key) const {
       return (search(this->root, key) != nullptr );
     }
 
-    // Add Derived Word with Frequency Logic
-    void addDerivedWord(T key, string word) {
+    void addDerivedWord(const T& key, const string& word, const string& scheme = "") {
       AVLNode<T>* node = search(root, key);
       if (node != nullptr) {
         for (auto& dw : node->derivedWords) {
+          addOp();
           if (dw.word == word) {
-            dw.frequency++; // Increment if exists
+            dw.frequency++;
+            if (dw.scheme.empty() && !scheme.empty()) dw.scheme = scheme;
             return;
           }
         }
-        // Add new if not found
-        node->derivedWords.push_back(DerivedWord(word, 1));
+        addOp();
+        node->derivedWords.push_back(DerivedWord(word, scheme, 1));
       }
     }
 
-    // Show Family (Translated and Styled!)
-    void showFamily(T key) {
+    
+
+    int getOperationCount() const { return operationCount; }
+    int getRotationCount() const { return rotationCount; }
+
+    void showFamily(const T& key) const {
       AVLNode<T>* node = search(root, key);
-      
-      cout << "\n  +================================================+" << endl;
-      if (node) {
-        cout << "  |  >> " << Tr("FAMILY FOR ROOT: ", "FAMILLE POUR LA RACINE : ", "عائلة الجذر: ") << key << endl;
-        cout << "  +================================================+" << endl;
-        
-        if (node->derivedWords.empty()) {
-             cout << "    " << Tr("(No derived words found)", "(Aucun mot dérivé trouvé)", "(لم يتم العثور على كلمات مشتقة)") << endl;
-        } else {
-            for (auto& dw : node->derivedWords) {
-              cout << "    - " << dw.word << " " << Tr("(Freq: ", "(Fréq : ", "(التكرار: ") << dw.frequency << ")" << endl;
-            }
+      if (node != nullptr) {
+        cout << "\nFamily for " << key << ":" << endl;
+        for (const auto& dw : node->derivedWords) {
+          cout << " - " << dw.word << " (" << dw.frequency << ")" << endl;
         }
       } else {
-        cout << "  |  " << Tr("✘ Root '", "✘ Racine '", "✘ الجذر '") << key << Tr("' not found.", "' introuvable.", "' غير موجود.") << endl;
+        cout << "\nRoot not found!" << endl;
       }
-      cout << "  +================================================+\n" << endl;
+    }
+
+    vector<DerivedWord> getFamily(const T& key) const {
+      AVLNode<T>* node = search(root, key);
+      if (node != nullptr) {
+        return node->derivedWords;
+      }
+      return vector<DerivedWord>(); 
     }
 };
 #endif

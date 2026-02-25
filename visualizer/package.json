@@ -1,0 +1,14 @@
+{
+  "name": "avl-tree-visualizer",
+  "version": "1.0.0",
+  "description": "Real-time AVL Tree Visualizer for Arabic Morphology Engine",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "chokidar": "^3.6.0",
+    "ws": "^8.19.0"
+  }
+}
