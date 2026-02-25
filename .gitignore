@@ -25,3 +25,20 @@ Thumbs.db
 *.swo
 
 build/
+
+# LaTeX output files
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.synctex.gz
+*.fdb_latexmk
+*.bbl
+*.blg
+*.lof
+*.lot
+*.nav
+*.snm
+*.vrb
+*.xdv
