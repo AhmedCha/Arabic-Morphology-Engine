@@ -10,11 +10,16 @@
 #include <QHeaderView>
 #include <QSplitter>
 #include <QLabel>
+#include <QGroupBox>
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QGraphicsEllipseItem>
 #include <QGraphicsTextItem>
 #include <QGraphicsLineItem>
+#include <QGraphicsItemGroup>
+#include <QVariantAnimation>
+#include <QEventLoop>
+#include <QMap>
 #include <QPen>
 #include <QBrush>
 #include <QWheelEvent>
@@ -64,6 +69,7 @@ class RootsTab : public QWidget {
   private:
     int currentLang = 0; // 0 = EN, 1 = FR, 2 = AR
     AVLTree<std::string>* m_tree;
+    bool isAnimating = false; // Prevent overlapping animations
 
     // UI Elements
     QLineEdit* newRootInput;
@@ -81,14 +87,25 @@ class RootsTab : public QWidget {
     ZoomableView* graphicsView;
     QTableWidget* familyTable;
 
-    // Translation Helper
+    // Stats Panel Elements
+    QGroupBox* statsGroup;
+    QLabel* opsCountLabel;
+    QLabel* rotCountLabel;
+
+    // Store graphical representations by their node key
+    QMap<QString, QGraphicsEllipseItem*> nodeEllipses;
+    QMap<QString, QGraphicsTextItem*> nodeTexts;
+    QGraphicsItemGroup* edgesGroup = nullptr; 
+
+    QMap<QString, QPointF> startPositions;
+    QMap<QString, QPointF> targetPositions;
+
     QString t(const QString& en, const QString& fr, const QString& ar) {
       if (currentLang == 1) return fr;
       if (currentLang == 2) return ar;
       return en;
     }
 
-    // Helper to get selected node
     AVLNode<std::string>* getSelectedNode() {
       auto items = scene->selectedItems();
       if (items.isEmpty()) return nullptr;
@@ -100,41 +117,6 @@ class RootsTab : public QWidget {
         else return curr;
       }
       return nullptr;
-    }
-
-    void drawNode(AVLNode<std::string>* node, double x, double y, double hSpacing) {
-      if (!node) return;
-      double vSpacing = 60.0; 
-      double nodeWidth = 90.0; 
-      double nodeHeight = 55.0;
-
-      if (node->left) {
-        scene->addLine(x, y, x - hSpacing, y + vSpacing, QPen(QColor("#95a5a6"), 2))->setZValue(-1);
-        drawNode(node->left, x - hSpacing, y + vSpacing, hSpacing / 2.0);
-      }
-      if (node->right) {
-        scene->addLine(x, y, x + hSpacing, y + vSpacing, QPen(QColor("#95a5a6"), 2))->setZValue(-1);
-        drawNode(node->right, x + hSpacing, y + vSpacing, hSpacing / 2.0);
-      }
-
-      QGraphicsEllipseItem* ellipse = scene->addEllipse(
-          x - nodeWidth / 2, y - nodeHeight / 2, nodeWidth, nodeHeight,
-          QPen(QColor("#2c3e50"), 2), QBrush(QColor("#27ae60"))
-          );
-      ellipse->setFlag(QGraphicsItem::ItemIsSelectable);
-      ellipse->setData(0, QString::fromStdString(node->key));
-      ellipse->setZValue(1);
-
-      QGraphicsTextItem* text = scene->addText("");
-      // BiDi HTML trick for the canvas nodes to prevent scrambling
-      text->setHtml("<div dir='rtl' style='text-align:center;'>" + QString::fromStdString(node->key) + "</div>");
-      text->setFont(QFont("Arial", 13, QFont::Bold));
-      text->setDefaultTextColor(Qt::white);
-      text->setZValue(2);
-
-      QRectF tr = text->boundingRect();
-      text->setPos(x - tr.width() / 2, y - tr.height() / 2);
-      text->setAcceptedMouseButtons(Qt::NoButton);
     }
 
     void retranslateUi() {
@@ -153,15 +135,40 @@ class RootsTab : public QWidget {
       addWordBtn->setText(t("Add Word", "Ajouter", "إضافة كلمة"));
       editWordBtn->setText(t("Edit", "Modifier", "تعديل"));
       deleteWordBtn->setText(t("Delete", "Supprimer", "حذف"));
+
+      if (statsGroup) statsGroup->setTitle(t("Statistics", "Statistiques", "إحصائيات"));
+      updateStats();
+    }
+
+    void updateStats() {
+      if (!m_tree) return;
+      opsCountLabel->setText(t("Operations:\n", "Opérations:\n", "العمليات:\n") + QString::number(m_tree->getOperationCount()));
+      rotCountLabel->setText(t("Rotations:\n", "Rotations:\n", "الدورانات:\n") + QString::number(m_tree->getRotationCount()));
+    }
+
+    void setUiControlsEnabled(bool state) {
+        addRootBtn->setEnabled(state);
+        editRootBtn->setEnabled(state);
+        deleteRootBtn->setEnabled(state);
+        newRootInput->setEnabled(state);
     }
 
   public:
     RootsTab(AVLTree<std::string>* tree, QWidget* parent = nullptr) 
       : QWidget(parent), m_tree(tree) {
-        QVBoxLayout* mainLayout = new QVBoxLayout(this);
-        mainLayout->setContentsMargins(5, 5, 5, 5);
+        
+        // --- BIND AVL TREE CALLBACKS ---
+        m_tree->updateStatsCb = [this]() { updateStats(); };
+        m_tree->animateCb = [this]() { refreshTable(); };
 
-        // -- TOP CONTROLS (Root Management) --
+        // OUTER LAYOUT
+        QHBoxLayout* outerLayout = new QHBoxLayout(this);
+        outerLayout->setContentsMargins(5, 5, 5, 5);
+
+        QWidget* leftContainer = new QWidget();
+        QVBoxLayout* mainLayout = new QVBoxLayout(leftContainer);
+        mainLayout->setContentsMargins(0, 0, 0, 0);
+
         QHBoxLayout* addLayout = new QHBoxLayout();
         newRootInput = new QLineEdit();
         addRootBtn = new QPushButton();
@@ -179,7 +186,6 @@ class RootsTab : public QWidget {
         addLayout->addWidget(deleteRootBtn);
         mainLayout->addLayout(addLayout);
 
-        // -- SPLITTER --
         QSplitter* splitter = new QSplitter(Qt::Vertical);
 
         scene = new QGraphicsScene(this);
@@ -187,7 +193,6 @@ class RootsTab : public QWidget {
         graphicsView = new ZoomableView(scene);
         splitter->addWidget(graphicsView);
 
-        // -- BOTTOM SECTION (Table + Scheme Management) --
         QWidget* bottomWidget = new QWidget();
         QVBoxLayout* bottomLayout = new QVBoxLayout(bottomWidget);
         bottomLayout->setContentsMargins(0,0,0,0);
@@ -223,6 +228,34 @@ class RootsTab : public QWidget {
         splitter->setSizes({600, 250});
         mainLayout->addWidget(splitter);
 
+        // --- RIGHT SIDE: Stats Panel ---
+        QWidget* rightContainer = new QWidget();
+        rightContainer->setFixedWidth(130); 
+        QVBoxLayout* rightLayout = new QVBoxLayout(rightContainer);
+        rightLayout->setContentsMargins(5, 0, 0, 0);
+
+        statsGroup = new QGroupBox();
+        QVBoxLayout* statsLayout = new QVBoxLayout(statsGroup);
+        opsCountLabel = new QLabel("Operations:\n0");
+        rotCountLabel = new QLabel("Rotations:\n0");
+
+        QFont statFont("Arial", 11, QFont::Bold);
+        opsCountLabel->setFont(statFont);
+        opsCountLabel->setAlignment(Qt::AlignCenter);
+        
+        rotCountLabel->setFont(statFont);
+        rotCountLabel->setAlignment(Qt::AlignCenter);
+
+        statsLayout->addWidget(opsCountLabel);
+        statsLayout->addSpacing(15);
+        statsLayout->addWidget(rotCountLabel);
+        statsLayout->addStretch(); 
+        
+        rightLayout->addWidget(statsGroup);
+
+        outerLayout->addWidget(leftContainer, 1);
+        outerLayout->addWidget(rightContainer);
+
         retranslateUi();
         refreshTable();
       }
@@ -230,48 +263,194 @@ class RootsTab : public QWidget {
     public slots:
       void setLanguage(int langIndex) {
         currentLang = langIndex;
-
-        // Flip the entire layout direction!
         Qt::LayoutDirection dir = (langIndex == 2) ? Qt::RightToLeft : Qt::LeftToRight;
         this->setLayoutDirection(dir);
         familyTable->setLayoutDirection(dir);
-
         retranslateUi();
 
-        // Re-populate table so word alignments update instantly
         if (AVLNode<std::string>* curr = getSelectedNode()) {
           populateTable(curr);
         }
       }
 
     void refreshTable() {
-      scene->clear();
-      familyTable->setRowCount(0);
+      if (isAnimating) return; // Prevent nested event loops if multiple triggers occur
+      isAnimating = true;
 
+      if (!edgesGroup) {
+        edgesGroup = new QGraphicsItemGroup();
+        scene->addItem(edgesGroup);
+      }
+
+      updateStats();
+
+      // 1. Calculate the new layout mathematically
+      targetPositions.clear();
       if (auto r = m_tree->getRoot()) {
         int height = r->height;
         double initial_hSpacing = 50.0 * std::pow(2.0, std::max(0, height - 2));
-        drawNode(r, 0, 0, initial_hSpacing); 
-        scene->setSceneRect(scene->itemsBoundingRect().adjusted(-100, -100, 100, 100));
+        calculateLayout(r, 0, 0, initial_hSpacing); 
       }
+
+      // 2. Setup the smooth animation and EventLoop Block
+      QEventLoop loop;
+      QVariantAnimation* anim = new QVariantAnimation(this);
+      anim->setDuration(600); // 600 milliseconds smooth transition
+      anim->setStartValue(0.0);
+      anim->setEndValue(1.0);
+      anim->setEasingCurve(QEasingCurve::InOutQuad);
+
+      connect(anim, &QVariantAnimation::valueChanged, this, [this](const QVariant& value) {
+          qreal step = value.toReal();
+          updateScenePositions(step);
+          });
+
+      connect(anim, &QVariantAnimation::finished, this, [this, &loop]() {
+          cleanupDeletedNodes();
+          drawEdges(); // Snap lines to final positions
+          loop.quit(); // RESUME THE AVL TREE C++ CODE
+          });
+
+      anim->start(QAbstractAnimation::DeleteWhenStopped);
+      loop.exec(); // This pauses the execution right here until the animation finishes
+
+      scene->setSceneRect(scene->itemsBoundingRect().adjusted(-100, -100, 100, 100));
+      isAnimating = false;
     }
 
     private slots:
-      // --- ROOT MANAGEMENT ---
-      void onAddRoot() {
-        QString input = newRootInput->text().trimmed();
-        if (input.isEmpty()) return;
+      void calculateLayout(AVLNode<std::string>* node, double x, double y, double hSpacing) {
+        if (!node) return;
+        double vSpacing = 60.0; 
 
-        if (input.length() != 3) {
-          QMessageBox::warning(this, t("Error", "Erreur", "خطأ"), 
-              t("Root must be 3 letters.", "La racine doit contenir 3 lettres.", "يجب أن يتكون الجذر من 3 أحرف."));
-          return;
+        QString key = QString::fromStdString(node->key);
+        targetPositions[key] = QPointF(x, y);
+
+        if (!nodeEllipses.contains(key)) {
+          createGraphicsItemsForNode(key, x, y - 50); 
         }
 
-        m_tree->insert(input.toStdString());
-        newRootInput->clear();
-        refreshTable();
+        if (node->left) calculateLayout(node->left, x - hSpacing, y + vSpacing, hSpacing / 2.0);
+        if (node->right) calculateLayout(node->right, x + hSpacing, y + vSpacing, hSpacing / 2.0);
       }
+
+    void createGraphicsItemsForNode(const QString& key, double startX, double startY) {
+      double nodeWidth = 90.0; 
+      double nodeHeight = 55.0;
+
+      QGraphicsEllipseItem* ellipse = scene->addEllipse(
+          startX - nodeWidth / 2, startY - nodeHeight / 2, nodeWidth, nodeHeight,
+          QPen(QColor("#2c3e50"), 2), QBrush(QColor("#27ae60"))
+          );
+      ellipse->setFlag(QGraphicsItem::ItemIsSelectable);
+      ellipse->setData(0, key);
+      ellipse->setZValue(1);
+
+      QGraphicsTextItem* text = scene->addText("");
+      text->setHtml("<div dir='rtl' style='text-align:center;'>" + key + "</div>");
+      text->setFont(QFont("Arial", 13, QFont::Bold));
+      text->setDefaultTextColor(Qt::white);
+      text->setZValue(2);
+      text->setAcceptedMouseButtons(Qt::NoButton);
+
+      nodeEllipses[key] = ellipse;
+      nodeTexts[key] = text;
+
+      startPositions[key] = QPointF(startX, startY);
+    }
+
+    void updateScenePositions(qreal step) {
+      double nodeWidth = 90.0; 
+      double nodeHeight = 55.0;
+
+      foreach(QGraphicsItem* item, edgesGroup->childItems()) {
+        delete item;
+      }
+
+      for (auto it = nodeEllipses.begin(); it != nodeEllipses.end(); ++it) {
+        QString key = it.key();
+        QGraphicsEllipseItem* ellipse = it.value();
+        QGraphicsTextItem* text = nodeTexts[key];
+
+        QPointF start = startPositions.value(key, ellipse->sceneBoundingRect().center());
+        QPointF end = targetPositions.value(key, start); 
+
+        double currentX = start.x() + (end.x() - start.x()) * step;
+        double currentY = start.y() + (end.y() - start.y()) * step;
+
+        ellipse->setRect(currentX - nodeWidth / 2, currentY - nodeHeight / 2, nodeWidth, nodeHeight);
+
+        QRectF tr = text->boundingRect();
+        text->setPos(currentX - tr.width() / 2, currentY - tr.height() / 2);
+      }
+    }
+
+    void drawEdges() {
+      if (auto r = m_tree->getRoot()) {
+        drawEdgesHelper(r);
+      }
+    }
+
+    void drawEdgesHelper(AVLNode<std::string>* node) {
+      if (!node) return;
+      QString key = QString::fromStdString(node->key);
+      QPointF pos = targetPositions[key];
+
+      if (node->left) {
+        QString leftKey = QString::fromStdString(node->left->key);
+        QPointF leftPos = targetPositions[leftKey];
+        QGraphicsLineItem* line = scene->addLine(pos.x(), pos.y(), leftPos.x(), leftPos.y(), QPen(QColor("#95a5a6"), 2));
+        edgesGroup->addToGroup(line);
+        line->setZValue(-1);
+        drawEdgesHelper(node->left);
+      }
+      if (node->right) {
+        QString rightKey = QString::fromStdString(node->right->key);
+        QPointF rightPos = targetPositions[rightKey];
+        QGraphicsLineItem* line = scene->addLine(pos.x(), pos.y(), rightPos.x(), rightPos.y(), QPen(QColor("#95a5a6"), 2));
+        edgesGroup->addToGroup(line);
+        line->setZValue(-1);
+        drawEdgesHelper(node->right);
+      }
+    }
+
+    void cleanupDeletedNodes() {
+      QList<QString> toDelete;
+      for (auto key : nodeEllipses.keys()) {
+        if (!targetPositions.contains(key)) {
+          toDelete.append(key);
+        } else {
+          startPositions[key] = targetPositions[key];
+        }
+      }
+
+      for (auto key : toDelete) {
+        delete nodeEllipses[key];
+        delete nodeTexts[key];
+        nodeEllipses.remove(key);
+        nodeTexts.remove(key);
+        startPositions.remove(key);
+      }
+    }
+
+    // --- ROOT MANAGEMENT ---
+    void onAddRoot() {
+      QString input = newRootInput->text().trimmed();
+      if (input.isEmpty()) return;
+
+      if (input.length() != 3) {
+        QMessageBox::warning(this, t("Error", "Erreur", "خطأ"), 
+            t("Root must be 3 letters.", "La racine doit contenir 3 lettres.", "يجب أن يتكون الجذر من 3 أحرف."));
+        return;
+      }
+
+      setUiControlsEnabled(false); // Lock UI while animating
+      m_tree->insert(input.toStdString());
+      refreshTable(); // Final snap
+      setUiControlsEnabled(true); // Unlock UI
+
+      newRootInput->clear();
+    }
 
     void onEditRoot() {
       AVLNode<std::string>* curr = getSelectedNode();
@@ -292,10 +471,13 @@ class RootsTab : public QWidget {
           return;
         }
 
-        // Grab the derived words so they aren't lost
         auto savedFamily = curr->derivedWords;
-        m_tree->remove(curr->key);
+        std::string oldKey = curr->key; 
+        
+        setUiControlsEnabled(false);
+        m_tree->remove(oldKey);
         m_tree->insert(newKey.toStdString());
+        setUiControlsEnabled(true);
 
         AVLNode<std::string>* newCurr = m_tree->getRoot();
         std::string target = newKey.toStdString();
@@ -321,7 +503,9 @@ class RootsTab : public QWidget {
           QMessageBox::Yes | QMessageBox::No);
 
       if (reply == QMessageBox::Yes) {
+        setUiControlsEnabled(false);
         m_tree->remove(curr->key);
+        setUiControlsEnabled(true);
         refreshTable();
       }
     }
@@ -337,13 +521,12 @@ class RootsTab : public QWidget {
       if (!curr) return;
 
       familyTable->setRowCount(curr->derivedWords.size());
-      const QChar RLM(0x200F); // Bulletproof BiDi rendering
+      const QChar RLM(0x200F); 
 
       for (size_t i = 0; i < curr->derivedWords.size(); ++i) {
         QString displayWord = RLM + QString::fromStdString(curr->derivedWords[i].word);
         QTableWidgetItem* wordItem = new QTableWidgetItem(displayWord);
 
-        // Align text properly depending on language
         wordItem->setTextAlignment(currentLang == 2 ? Qt::AlignRight | Qt::AlignVCenter : Qt::AlignLeft | Qt::AlignVCenter);
         familyTable->setItem(i, 0, wordItem);
 
@@ -380,7 +563,6 @@ class RootsTab : public QWidget {
       int row = familyTable->currentRow();
       if (!curr || row < 0) return;
 
-      // Clean the RLM out of the text if it's there before editing
       QString oldWord = familyTable->item(row, 0)->text().remove(QChar(0x200F));
       int oldFreq = familyTable->item(row, 1)->data(Qt::EditRole).toInt();
 
