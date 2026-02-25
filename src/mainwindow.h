@@ -5,6 +5,7 @@
 #include <QTabWidget>
 #include <QMenu>
 #include <QAction>
+#include <QTimer>
 
 #include "AVLTree.h"
 #include "schemeHashTable.h"
@@ -30,6 +31,9 @@ class MainWindow : public QMainWindow {
     void onSaveData();
     void promptInitialLanguage();
     void setGlobalLanguage(int langIndex); // 0 = English, 1 = French, 2 = Arabic
+#ifdef AVL_VISUALIZER
+    void pollVisualizerCommands();
+#endif
 
   private:
     void setupMenuBar();
@@ -58,6 +62,10 @@ class MainWindow : public QMainWindow {
     QAction* actEnglish;
     QAction* actFrench;
     QAction* actArabic;
+
+#ifdef AVL_VISUALIZER
+    QTimer* visualizerTimer;
+#endif
 };
 
 #endif

@@ -35,6 +35,16 @@ const svgEl = document.getElementById("tree-svg");
 const svgD3 = d3.select("#tree-svg");
 const canvasEl = document.getElementById("tree-canvas");
 
+// Add Zoom & Pan Support
+const zoom = d3
+  .zoom()
+  .scaleExtent([0.1, 4])
+  .on("zoom", (e) => {
+    linkLayer.attr("transform", e.transform);
+    nodeLayer.attr("transform", e.transform);
+  });
+svgD3.call(zoom);
+
 // Layers in z-order: links below nodes
 const linkLayer = svgD3.append("g").attr("class", "link-layer");
 const nodeLayer = svgD3.append("g").attr("class", "node-layer");
@@ -156,6 +166,15 @@ async function processEvent(event) {
     );
     totalRotations++;
     document.getElementById("stat-rotations").textContent = totalRotations;
+
+    // Explicit Rotations feature
+    if (event.tree) {
+      treeRoot = event.tree;
+      await renderTree(treeRoot, null, null);
+    }
+  } else if (type === "already_exists") {
+    showToast("notfound", `"${event.key}" already exists`);
+    addLog("system", "ℹ️", `"${event.key}"`, "Already in tree");
   } else if (type === "search_result") {
     highlightKey = event.found ? event.key : null;
     if (event.found) {
@@ -171,6 +190,27 @@ async function processEvent(event) {
       highlightKey = null;
       if (treeRoot) renderTree(treeRoot, null, null);
     }, 2000);
+  } else if (type === "family_result") {
+    // Populate modal
+    document.getElementById("family-root-value").textContent = event.key;
+    const tbody = document.querySelector("#family-table tbody");
+    tbody.innerHTML = "";
+    if (event.family && event.family.length > 0) {
+      event.family.forEach((dw) => {
+        const tr = document.createElement("tr");
+        const tdWord = document.createElement("td");
+        tdWord.textContent = dw.word;
+        const tdFreq = document.createElement("td");
+        tdFreq.textContent = dw.frequency;
+        tr.appendChild(tdWord);
+        tr.appendChild(tdFreq);
+        tbody.appendChild(tr);
+      });
+    } else {
+      tbody.innerHTML =
+        "<tr><td colspan='2' style='text-align:center;color:var(--text-tertiary)'>No words derived from this root seen so far.</td></tr>";
+    }
+    document.getElementById("family-modal").classList.remove("hidden");
   }
 }
 
@@ -274,6 +314,8 @@ function renderTree(root, foundKey, deletingKey) {
       .on("mouseout", () => hideTooltip())
       .on("click", (event, d) => {
         document.getElementById("key-input").value = d.key;
+        sendWS({ type: "family", key: d.key });
+        zoomToNode(d.x, d.y);
       });
 
     nodeEnter.append("circle").attr("r", NODE_RADIUS);
@@ -368,8 +410,9 @@ function layoutAVL(root, W, H) {
   inorder(root);
 
   const n = ordered.length;
-  const usableW = W - NODE_RADIUS * 4;
-  const startX = NODE_RADIUS * 2;
+  const minSpacing = NODE_RADIUS * 2.5;
+  const usableW = Math.max(W - NODE_RADIUS * 4, n * minSpacing);
+  const startX = Math.max(NODE_RADIUS * 2, (W - usableW) / 2);
 
   const posMap = new Map();
   ordered.forEach((node, i) => {
@@ -387,7 +430,7 @@ function layoutAVL(root, W, H) {
   }
 
   const treeH = treeHeight(root);
-  const startY = Math.min(60, (H - treeH * LEVEL_HEIGHT) / 2);
+  const startY = Math.max(60, (H - treeH * LEVEL_HEIGHT) / 2);
   bfsLayout(root, startY, 0);
 
   ordered.forEach((node) => {
@@ -427,6 +470,20 @@ function layoutAVL(root, W, H) {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+function zoomToNode(x, y) {
+  const scale = 1.8;
+  const width = svgEl.clientWidth || 800;
+  const height = svgEl.clientHeight || 600;
+  const tx = width / 2 - x * scale;
+  const ty = height / 2 - y * scale;
+
+  svgD3
+    .transition()
+    .duration(800)
+    .ease(d3.easeCubicInOut)
+    .call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+}
+
 function straightLink(source, target) {
   const dx = target.x - source.x;
   const dy = target.y - source.y;
@@ -597,6 +654,67 @@ function deleteKey() {
   sendWS({ type: "delete", key });
   input.value = "";
   input.focus();
+}
+
+function analyzeCorpus() {
+  const fileInput = document.getElementById("corpus-file-input");
+  const input = document.getElementById("corpus-input");
+  const text = input.value.trim();
+
+  if (fileInput && fileInput.files && fileInput.files.length > 0) {
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const buffer = e.target.result;
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const b64 = btoa(binary);
+      addLog(
+        "system",
+        "📝",
+        "Corpus File Submitted",
+        `Processing ${file.name}...`,
+      );
+      sendWS({ type: "corpus-file", name: file.name, data: b64 });
+      fileInput.value = "";
+      input.value = "";
+    };
+    reader.readAsArrayBuffer(file);
+    return;
+  }
+
+  if (!text) {
+    flashInputBtn("corpus-input");
+    return;
+  }
+  input.value = "";
+  addLog("system", "📝", "Corpus Submitted", "Processing in C++ Backend...");
+  sendWS({ type: "corpus", text });
+}
+
+function flashInputBtn(id) {
+  const input = document.getElementById(id);
+  input.style.borderColor = "var(--red)";
+  setTimeout(() => {
+    input.style.borderColor = "";
+  }, 600);
+}
+
+function closeFamilyModal() {
+  document.getElementById("family-modal").classList.add("hidden");
+}
+
+function toggleTheme() {
+  const root = document.documentElement;
+  const current = root.getAttribute("data-theme");
+  if (current === "light") {
+    root.removeAttribute("data-theme");
+  } else {
+    root.setAttribute("data-theme", "light");
+  }
 }
 
 function searchKey() {

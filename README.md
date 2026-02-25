@@ -36,7 +36,7 @@ You need the build tools, CMake, and Qt6 libraries.
 ```bash
 sudo apt update
 sudo apt install build-essential cmake
-sudo apt install qt6-base-dev qt6-declarative-dev libqt6widgets6 libgl1-mesa-dev
+sudo apt install qt6-base-dev qt6-declarative-dev libqt6widgets6 libgl1-mesa-dev poppler-utils
 
 ```
 

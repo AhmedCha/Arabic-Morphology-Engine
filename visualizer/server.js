@@ -97,6 +97,25 @@ function handleBrowserMessage(msg) {
     // Also simulate locally for immediate UI feedback if C++ isn't running
     // (The C++ app will overwrite with authoritative state when it runs)
     processInternalTree(msg.type, msg.key);
+  } else if (msg.type === "family") {
+    const cmd = `family:${msg.key}\n`;
+    fs.appendFileSync(CMD_FILE, cmd);
+    console.log(`\x1b[35m→ Browser cmd: family "${msg.key}"\x1b[0m`);
+  } else if (msg.type === "corpus") {
+    // Save corpus chunk to a temp file and send its path to C++
+    const tempPath = path.join("/tmp", `avl_corpus_${Date.now()}.txt`);
+    fs.writeFileSync(tempPath, msg.text, "utf8");
+    const cmd = `corpus:${tempPath}\n`;
+    fs.appendFileSync(CMD_FILE, cmd);
+    console.log(`\x1b[35m→ Browser cmd: corpus (${tempPath})\x1b[0m`);
+  } else if (msg.type === "corpus-file") {
+    const buffer = Buffer.from(msg.data, "base64");
+    const ext = msg.name.toLowerCase().endsWith(".pdf") ? ".pdf" : ".txt";
+    const tempPath = path.join("/tmp", `avl_corpus_${Date.now()}${ext}`);
+    fs.writeFileSync(tempPath, buffer);
+    const cmd = `corpus:${tempPath}\n`;
+    fs.appendFileSync(CMD_FILE, cmd);
+    console.log(`\x1b[35m→ Browser cmd: corpus-file (${tempPath})\x1b[0m`);
   }
 }
 
@@ -245,24 +264,44 @@ function avlInsertWithSteps(tree, key) {
     const bf = balanceFactor(node);
 
     if (bf > 1 && key < node.left.key) {
-      steps.push({ type: "rotation", rotation: "LL", pivot: node.left.key });
+      steps.push({
+        type: "rotation",
+        rotation: "LL",
+        pivot: node.left.key,
+        tree: JSON.parse(JSON.stringify(tree.root)),
+      });
       const { newRoot } = rightRotate(node);
       return newRoot;
     }
     if (bf < -1 && key > node.right.key) {
-      steps.push({ type: "rotation", rotation: "RR", pivot: node.right.key });
+      steps.push({
+        type: "rotation",
+        rotation: "RR",
+        pivot: node.right.key,
+        tree: JSON.parse(JSON.stringify(tree.root)),
+      });
       const { newRoot } = leftRotate(node);
       return newRoot;
     }
     if (bf > 1 && key > node.left.key) {
-      steps.push({ type: "rotation", rotation: "LR", pivot: node.left.key });
+      steps.push({
+        type: "rotation",
+        rotation: "LR",
+        pivot: node.left.key,
+        tree: JSON.parse(JSON.stringify(tree.root)),
+      });
       const lr = leftRotate(node.left);
       node.left = lr.newRoot;
       const { newRoot } = rightRotate(node);
       return newRoot;
     }
     if (bf < -1 && key < node.right.key) {
-      steps.push({ type: "rotation", rotation: "RL", pivot: node.right.key });
+      steps.push({
+        type: "rotation",
+        rotation: "RL",
+        pivot: node.right.key,
+        tree: JSON.parse(JSON.stringify(tree.root)),
+      });
       const rr = rightRotate(node.right);
       node.right = rr.newRoot;
       const { newRoot } = leftRotate(node);
@@ -315,20 +354,40 @@ function avlDeleteWithSteps(tree, key) {
     const bf = balanceFactor(node);
 
     if (bf > 1 && balanceFactor(node.left) >= 0) {
-      steps.push({ type: "rotation", rotation: "LL", pivot: node.left.key });
+      steps.push({
+        type: "rotation",
+        rotation: "LL",
+        pivot: node.left.key,
+        tree: JSON.parse(JSON.stringify(tree.root)),
+      });
       return rightRotate(node).newRoot;
     }
     if (bf > 1 && balanceFactor(node.left) < 0) {
-      steps.push({ type: "rotation", rotation: "LR", pivot: node.left.key });
+      steps.push({
+        type: "rotation",
+        rotation: "LR",
+        pivot: node.left.key,
+        tree: JSON.parse(JSON.stringify(tree.root)),
+      });
       node.left = leftRotate(node.left).newRoot;
       return rightRotate(node).newRoot;
     }
     if (bf < -1 && balanceFactor(node.right) <= 0) {
-      steps.push({ type: "rotation", rotation: "RR", pivot: node.right.key });
+      steps.push({
+        type: "rotation",
+        rotation: "RR",
+        pivot: node.right.key,
+        tree: JSON.parse(JSON.stringify(tree.root)),
+      });
       return leftRotate(node).newRoot;
     }
     if (bf < -1 && balanceFactor(node.right) > 0) {
-      steps.push({ type: "rotation", rotation: "RL", pivot: node.right.key });
+      steps.push({
+        type: "rotation",
+        rotation: "RL",
+        pivot: node.right.key,
+        tree: JSON.parse(JSON.stringify(tree.root)),
+      });
       node.right = rightRotate(node.right).newRoot;
       return leftRotate(node).newRoot;
     }

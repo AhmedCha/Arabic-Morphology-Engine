@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,10 +8,13 @@
   <meta name="description" content="Real-time AVL tree visualization for the Arabic Morphology Engine" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=SF+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=SF+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
 
   <!-- ─── Header ──────────────────────────────────────────────────────── -->
@@ -19,23 +23,23 @@
       <div class="logo">
         <div class="logo-mark">
           <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="16" cy="10" r="5" fill="url(#grad1)"/>
-            <circle cx="8"  cy="24" r="4" fill="url(#grad2)"/>
-            <circle cx="24" cy="24" r="4" fill="url(#grad2)"/>
-            <line x1="16" y1="15" x2="8"  y2="20" stroke="url(#line1)" stroke-width="1.5"/>
-            <line x1="16" y1="15" x2="24" y2="20" stroke="url(#line1)" stroke-width="1.5"/>
+            <circle cx="16" cy="10" r="5" fill="url(#grad1)" />
+            <circle cx="8" cy="24" r="4" fill="url(#grad2)" />
+            <circle cx="24" cy="24" r="4" fill="url(#grad2)" />
+            <line x1="16" y1="15" x2="8" y2="20" stroke="url(#line1)" stroke-width="1.5" />
+            <line x1="16" y1="15" x2="24" y2="20" stroke="url(#line1)" stroke-width="1.5" />
             <defs>
               <linearGradient id="grad1" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#5e9fff"/>
-                <stop offset="100%" stop-color="#a78bfa"/>
+                <stop offset="0%" stop-color="#5e9fff" />
+                <stop offset="100%" stop-color="#a78bfa" />
               </linearGradient>
               <linearGradient id="grad2" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#34d399"/>
-                <stop offset="100%" stop-color="#5e9fff"/>
+                <stop offset="0%" stop-color="#34d399" />
+                <stop offset="100%" stop-color="#5e9fff" />
               </linearGradient>
               <linearGradient id="line1" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#5e9fff" stop-opacity="0.8"/>
-                <stop offset="100%" stop-color="#a78bfa" stop-opacity="0.8"/>
+                <stop offset="0%" stop-color="#5e9fff" stop-opacity="0.8" />
+                <stop offset="100%" stop-color="#a78bfa" stop-opacity="0.8" />
               </linearGradient>
             </defs>
           </svg>
@@ -46,6 +50,13 @@
         </div>
       </div>
       <div class="header-status">
+        <button class="btn-icon theme-toggle" onclick="toggleTheme()" title="Toggle Light/Dark Mode"
+          style="margin-right: 12px;">
+          <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+            <path
+              d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4.22 4.22a1 1 0 011.415 0l.708.707a1 1 0 01-1.414 1.415l-.708-.708a1 1 0 010-1.414zM18 9a1 1 0 110 2h-1a1 1 0 110-2h1zM14.22 15.78a1 1 0 010 1.415l-.708.707a1 1 0 01-1.414-1.414l.708-.708a1 1 0 011.414 0zM10 16a1 1 0 11-2 0v-1a1 1 0 112 0v1zM6.485 14.364a1 1 0 01-1.414 0l-.707-.707a1 1 0 011.414-1.415l.707.708a1 1 0 010 1.414zM2 9a1 1 0 110 2H1a1 1 0 110-2h1zm3.07-4.364a1 1 0 010 1.414L4.364 6.757a1 1 0 01-1.415-1.414l.708-.707a1 1 0 011.414 0zM10 5a5 5 0 100 10 5 5 0 000-10z" />
+          </svg>
+        </button>
         <div id="connection-dot" class="status-dot disconnected"></div>
         <span id="connection-label">Connecting…</span>
       </div>
@@ -66,22 +77,56 @@
         </div>
         <div class="btn-row">
           <button id="btn-insert" class="btn btn-insert" onclick="insertKey()">
-            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 4a1 1 0 011 1v4h4a1 1 0 110 2h-4v4a1 1 0 11-2 0v-4H5a1 1 0 110-2h4V5a1 1 0 011-1z"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10 4a1 1 0 011 1v4h4a1 1 0 110 2h-4v4a1 1 0 11-2 0v-4H5a1 1 0 110-2h4V5a1 1 0 011-1z" />
+            </svg>
             Insert
           </button>
           <button id="btn-delete" class="btn btn-delete" onclick="deleteKey()">
-            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clip-rule="evenodd" />
+            </svg>
             Delete
           </button>
         </div>
         <div class="btn-row">
           <button id="btn-search" class="btn btn-search" onclick="searchKey()">
-            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd"
+                d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                clip-rule="evenodd" />
+            </svg>
             Search
           </button>
           <button id="btn-clear" class="btn btn-clear" onclick="clearTree()">
-            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd"
+                d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                clip-rule="evenodd" />
+            </svg>
             Reset
+          </button>
+        </div>
+      </section>
+
+      <!-- Corpus Analyzer Control -->
+      <section class="card" id="corpus-card">
+        <h2 class="card-title">Corpus Analyzer</h2>
+        <div class="input-group" style="display:flex; flex-direction:column; gap:8px;">
+          <input type="file" id="corpus-file-input" accept=".txt,.pdf"
+            style="font-size:12px; color:var(--text-tertiary);" />
+          <textarea id="corpus-input" placeholder="Paste Arabic text here to analyze and extract roots..." rows="3"
+            dir="auto"
+            style="width:100%; resize:vertical; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:10px; padding:10px 14px; font-size:13px; font-family:var(--font-body); color:var(--text-primary); outline:none; transition: border-color var(--t-fast);"></textarea>
+        </div>
+        <div class="btn-row">
+          <button id="btn-corpus" class="btn btn-search" onclick="analyzeCorpus()" style="width:100%">
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd"
+                d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
+                clip-rule="evenodd" />
+            </svg>
+            Analyze Text
           </button>
         </div>
       </section>
@@ -164,7 +209,11 @@
         <div class="log-header">
           <h2 class="card-title">Activity Log</h2>
           <button class="btn-icon" onclick="clearLog()" title="Clear log">
-            <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+              <path fill-rule="evenodd"
+                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                clip-rule="evenodd" />
+            </svg>
           </button>
         </div>
         <div id="activity-log" class="log-list"></div>
@@ -179,6 +228,40 @@
     <div class="op-toast-text" id="op-toast-text">Inserting...</div>
   </div>
 
+  <!-- ─── Derivatives / Family Modal ────────────────────────────────────── -->
+  <div id="family-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Word Derivatives</h2>
+        <button class="btn-icon" onclick="closeFamilyModal()" title="Close">
+          <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+            <path fill-rule="evenodd"
+              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+              clip-rule="evenodd" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="family-root-label" class="family-root-label">Root: <span id="family-root-value"
+            class="highlight-text"></span></p>
+        <div class="table-container">
+          <table class="family-table" id="family-table">
+            <thead>
+              <tr>
+                <th>Word</th>
+                <th>Frequency</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Rows injected via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
+
 </html>

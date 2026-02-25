@@ -364,6 +364,15 @@ template <typename T> class AVLTree {
     }
 
     void insert(const T& key) {
+#ifdef AVL_VISUALIZER
+      if (search(key)) {
+        ostringstream _oss;
+        _oss << "{\"type\":\"already_exists\",\"key\":\"" 
+             << avl_json_escape(to_string_avl(key)) << "\"}";
+        AVL_LOG(_oss.str());
+        return;
+      }
+#endif
       root = insert(root, key);
       #ifdef AVL_VISUALIZER
       {

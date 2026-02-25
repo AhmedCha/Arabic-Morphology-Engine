@@ -4,6 +4,7 @@
 #include "rootsTab.h"
 #include "schemesTab.h"
 #include "corpusTab.h"
+#include "corpusAnalyzer.h"
 
 #include <QVBoxLayout>
 #include <QPushButton>
@@ -48,6 +49,12 @@ MainWindow::MainWindow(AVLTree<std::string>* tree, SchemeHashTable* schemes, QWi
 
   // Prompt for language once on startup
   promptInitialLanguage();
+
+#ifdef AVL_VISUALIZER
+  visualizerTimer = new QTimer(this);
+  connect(visualizerTimer, &QTimer::timeout, this, &MainWindow::pollVisualizerCommands);
+  visualizerTimer->start(100); // 100ms interval
+#endif
 }
 
 void MainWindow::promptInitialLanguage() {
@@ -214,3 +221,59 @@ void MainWindow::onSaveData() {
   m_schemes->saveToFile("schemes.txt");
   QMessageBox::information(this, t("Success", "Succès", "نجاح"), t("Data successfully saved.", "Données sauvegardées.", "تم حفظ البيانات بنجاح."));
 }
+
+#ifdef AVL_VISUALIZER
+void MainWindow::pollVisualizerCommands() {
+  QFile file("/tmp/avl_cmd.txt");
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+  
+  QTextStream in(&file);
+  QString content = in.readAll();
+  file.close();
+  
+  if (content.trimmed().isEmpty()) return;
+  
+  QFile clearFile("/tmp/avl_cmd.txt");
+  if (clearFile.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+      clearFile.close();
+  }
+
+  QStringList lines = content.split('\n', Qt::SkipEmptyParts);
+  for (const QString& line : lines) {
+    if (line.trimmed().isEmpty()) continue;
+    
+    QStringList parts = line.split(":");
+    if (parts.size() < 2) continue;
+    
+    QString cmd = parts[0];
+    QString arg = parts.mid(1).join(":");
+    
+    if (cmd == "insert") {
+        m_tree->insert(arg.toStdString());
+        rootsTab->refreshTable();
+    } else if (cmd == "delete") {
+        m_tree->remove(arg.toStdString());
+        rootsTab->refreshTable();
+    } else if (cmd == "corpus") {
+        corpusAnalyzer::analyzeFile(arg.toStdString(), *m_tree, *m_schemes, false);
+        rootsTab->refreshTable();
+    } else if (cmd == "family") {
+        std::vector<DerivedWord> family = m_tree->getFamily(arg.toStdString());
+        
+        QString json = "{\"type\":\"family_result\",\"key\":\"" + arg + "\",\"family\":[";
+        for (size_t i = 0; i < family.size(); ++i) {
+            json += "{\"word\":\"" + QString::fromStdString(family[i].word) + "\",\"frequency\":" + QString::number(family[i].frequency) + "}";
+            if (i < family.size() - 1) json += ",";
+        }
+        json += "]}";
+        
+        QFile evFile("/tmp/avl_events.jsonl");
+        if (evFile.open(QIODevice::Append | QIODevice::Text)) {
+            QTextStream out(&evFile);
+            out << json << "\n";
+            evFile.close();
+        }
+    }
+  }
+}
+#endif
