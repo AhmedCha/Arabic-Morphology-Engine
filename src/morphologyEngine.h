@@ -106,7 +106,7 @@ class MorphologyEngine {
 
       for (const auto& scheme : allSchemes) {
         string word = generate(root, scheme.parsedPattern);
-        tree.addDerivedWord(root, word);
+        tree.addDerivedWord(root, word, scheme.name);
         count++;
       }
       return count;
@@ -139,7 +139,7 @@ class MorphologyEngine {
       string name = schemes.getNameByPattern(deducedPattern); 
       if (name != "") {
         foundSchemeName = name;
-        tree.addDerivedWord(root, word);
+        tree.addDerivedWord(root, word, name);
         return true;
       }
       return false;

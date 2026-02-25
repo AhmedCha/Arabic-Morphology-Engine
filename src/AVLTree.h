@@ -6,13 +6,12 @@
 #include <vector>
 #include <sstream>
 #include <string>
+#include <functional> 
 
 #include "StringUtils.h"
 
 using namespace std;
 
-// ─── Real-time Visualizer Event Logger ──────────────────────────────────────
-// Define AVL_VISUALIZER at compile time to enable: g++ -DAVL_VISUALIZER ...
 #ifdef AVL_VISUALIZER
   #include <mutex>
   #include <chrono>
@@ -64,9 +63,12 @@ using namespace std;
 
 struct DerivedWord {
   string word;
+  string scheme;
   int frequency;
-  DerivedWord(const string& w, int f = 1) : word(w), frequency(f) {}
+  DerivedWord(const string& w, const string& s = "", int f = 1) : word(w), scheme(s), frequency(f) {}
+  DerivedWord(const string& w, int f) : word(w), scheme(""), frequency(f) {}
 };
+
 
 template <typename T> class AVLNode {
   public:
@@ -87,6 +89,20 @@ template <typename T> class AVLNode {
 
 template <typename T> class AVLTree {
   private:
+    mutable int operationCount = 0;
+    mutable int rotationCount = 0;
+    string logFilePath = "tree_log.txt";
+
+    void logAction(const string& action, const T& key) {
+      ofstream logFile(logFilePath, ios::app);
+      if (logFile.is_open()) {
+        logFile << "Action: " << action << " | Key: " << key 
+          << " | Total Ops: " << operationCount 
+          << " | Total Rotations: " << rotationCount << "\n";
+        logFile.close();
+      }
+    }
+
     AVLNode<T>* root;
     string filename;
 
@@ -112,140 +128,171 @@ template <typename T> class AVLTree {
       return height(node->left) - height(node->right);
     }
 
-    AVLNode<T>* rightRotate(AVLNode<T>* y)
+    // Pass by reference so parent's pointer is updated instantly!
+    void rightRotate(AVLNode<T>*& y)
     {
-      AVLNode<T>* x = y->left;
-      AVLNode<T>* T2 = x->right;
+      addOp(); AVLNode<T>* x = y->left;
+      addOp(); AVLNode<T>* T2 = x->right;
 
-      y->left = T2;
-      x->right = y;
+      addOp(); y->left = T2;
+      addOp(); x->right = y;
 
       y->height = max(height(y->left), height(y->right)) + 1;
       x->height = max(height(x->left), height(x->right)) + 1;
 
-      return x;
+      y = x; // Instantly update the parent's pointer to the new root
+      addRot(); // Safe to animate now!
     }
 
-    AVLNode<T>* leftRotate(AVLNode<T>* x)
+    // Pass by reference so parent's pointer is updated instantly!
+    void leftRotate(AVLNode<T>*& x)
     {
-      AVLNode<T>* y = x->right;
-      AVLNode<T>* T2 = y->left;
+      addOp(); AVLNode<T>* y = x->right;
+      addOp(); AVLNode<T>* T2 = y->left;
 
-      x->right = T2;
-      y->left = x;
+      addOp(); x->right = T2;
+      addOp(); y->left = x;
 
       x->height = max(height(x->left), height(x->right)) + 1;
       y->height = max(height(y->left), height(y->right)) + 1;
 
-      return y;
+      x = y; // Instantly update the parent's pointer to the new root
+      addRot(); // Safe to animate now!
     }
 
-    AVLNode<T>* insert(AVLNode<T>* node, const T& key)
-    {
-      if (node == nullptr)
-        return new AVLNode<T>(key); // Manual allocation
+    void insert(AVLNode<T>*& node, const T& key)
+    {            
+      addOp(); 
+      if (node == root) {
+        logAction("Insert", key);
+      }
+      
+      if (node == nullptr) {
+        addOp();
+        node = new AVLNode<T>(key); // Updates parent's pointer instantly
+        if (animateCb) animateCb(); // Safe to animate appearance
+        return; 
+      }
 
-      if (key < node->key)
-        node->left = insert(node->left, key);
-      else if (key > node->key)
-        node->right = insert(node->right, key);
-      else
-        return node;
+      addOp();
+      if (key < node->key) {
+        insert(node->left, key);
+      } else {
+        addOp();
+        if (key > node->key) {
+          insert(node->right, key);
+        } else {
+          return; // Duplicate
+        }
+      }
 
       node->height = 1 + max(height(node->left), height(node->right));
 
       int balance = balanceFactor(node);
 
-      // Left heavy
       if (balance > 1) {
+        addOp();
         if (balanceFactor(node->left) >= 0) {
-          return rightRotate(node);
+          rightRotate(node);
         } else {
-          node->left = leftRotate(node->left);
-          return rightRotate(node);
+          leftRotate(node->left);
+          rightRotate(node);
         }
-      }
-
-      // Right heavy
-      if (balance < -1) {
+      } else if (balance < -1) {
+        addOp();
         if (balanceFactor(node->right) <= 0) {
-          return leftRotate(node);
+          leftRotate(node);
         } else {
-          node->right = rightRotate(node->right);
-          return leftRotate(node);
+          rightRotate(node->right);
+          leftRotate(node);
         }
       }
-
-      return node;
     }
 
     AVLNode<T>* minValueNode(AVLNode<T>* node) const
     {
       AVLNode<T>* current = node;
-      while (current && current->left != nullptr)
+      while (current && current->left != nullptr) {
+        addOp(); 
         current = current->left;
+      }
       return current;
     }
 
-    AVLNode<T>* deleteNode(AVLNode<T>* rootNode, const T& key)
+    void deleteNode(AVLNode<T>*& rootNode, const T& key)
     {
-      if (rootNode == nullptr)
-        return rootNode;
+      addOp();
+      if (rootNode == root) { 
+        logAction("Delete", key);
+      }
+      if (rootNode == nullptr) return;
 
-      if (key < rootNode->key)
-        rootNode->left = deleteNode(rootNode->left, key);
-      else if (key > rootNode->key)
-        rootNode->right = deleteNode(rootNode->right, key);
-      else {
-        if ((rootNode->left == nullptr) || (rootNode->right == nullptr)) {
-          AVLNode<T>* temp = rootNode->left ? rootNode->left : rootNode->right;
+      addOp();
+      if (key < rootNode->key) {
+        deleteNode(rootNode->left, key);
+      } else {
+        addOp();
+        if (key > rootNode->key) {
+          deleteNode(rootNode->right, key);
+        } else {
+          addOp();
+          if ((rootNode->left == nullptr) || (rootNode->right == nullptr)) {
+            AVLNode<T>* temp = rootNode->left ? rootNode->left : rootNode->right;
 
-          if (temp == nullptr) {
-            delete rootNode; // Free memory!
-            return nullptr;
-          } else {
-            delete rootNode; // Free the old root before replacing
-            rootNode = temp;
+            if (temp == nullptr) {
+              addOp();
+              AVLNode<T>* nodeToDelete = rootNode;
+              rootNode = nullptr; // Clear parent's pointer FIRST
+              if (animateCb) animateCb(); // Safe to animate
+              delete nodeToDelete; // Free memory safely
+              return;
+            } else {
+              addOp();
+              AVLNode<T>* nodeToDelete = rootNode;
+              rootNode = temp; // Update parent's pointer FIRST
+              if (animateCb) animateCb(); // Safe to animate
+              delete nodeToDelete; // Free memory safely
+            }
           }
-        }
-        else {
-          AVLNode<T>* temp = minValueNode(rootNode->right);
-          rootNode->key = temp->key;
-          rootNode->derivedWords = temp->derivedWords; 
-          rootNode->right = deleteNode(rootNode->right, temp->key);
+          else {
+            AVLNode<T>* temp = minValueNode(rootNode->right);
+            addOp(); rootNode->key = temp->key;
+            addOp(); rootNode->derivedWords = temp->derivedWords; 
+            if (animateCb) animateCb(); 
+            
+            deleteNode(rootNode->right, temp->key);
+          }
         }
       }
 
-      if (rootNode == nullptr)
-        return rootNode;
+      if (rootNode == nullptr) return;
 
       rootNode->height = 1 + max(height(rootNode->left), height(rootNode->right));
 
       int balance = balanceFactor(rootNode);
 
-      if (balance > 1 && balanceFactor(rootNode->left) >= 0)
-        return rightRotate(rootNode);
-
+      addOp();
+      if (balance > 1 && balanceFactor(rootNode->left) >= 0) {
+        rightRotate(rootNode);
+        return;
+      }
+      addOp();
       if (balance > 1 && balanceFactor(rootNode->left) < 0) {
-        rootNode->left = leftRotate(rootNode->left);
-        return rightRotate(rootNode);
+        leftRotate(rootNode->left);
+        rightRotate(rootNode);
+        return;
       }
-
-      if (balance < -1 && balanceFactor(rootNode->right) <= 0)
-        return leftRotate(rootNode);
-
+      addOp();
+      if (balance < -1 && balanceFactor(rootNode->right) <= 0) {
+        leftRotate(rootNode);
+        return;
+      }
+      addOp();
       if (balance < -1 && balanceFactor(rootNode->right) > 0) {
-        rootNode->right = rightRotate(rootNode->right);
-        return leftRotate(rootNode);
+        rightRotate(rootNode->right);
+        leftRotate(rootNode);
+        return;
       }
-
-      return rootNode;
-    }
-
-    AVLNode<T>* search(AVLNode<T>* node, const T& key) const {
-      if (node == nullptr || node->key == key) return node;
-      if (key < node->key) return search(node->left, key);
-      return search(node->right, key);
     }
 
     void saveToFileHelper(AVLNode<T>* node, ofstream& file) const {
@@ -274,6 +321,20 @@ template <typename T> class AVLTree {
     }
 
   public:
+    std::function<void()> updateStatsCb = nullptr;
+    std::function<void()> animateCb = nullptr;
+
+    void addOp() const {
+        operationCount++;
+        if (updateStatsCb) updateStatsCb(); 
+    }
+
+    void addRot() const {
+        rotationCount++;
+        if (updateStatsCb) updateStatsCb();
+        if (animateCb) animateCb(); 
+    }
+
     AVLNode<T>* getRoot() const {
       return root;
     }
@@ -373,7 +434,7 @@ template <typename T> class AVLTree {
         return;
       }
 #endif
-      root = insert(root, key);
+      insert(root, key);
       #ifdef AVL_VISUALIZER
       {
         ostringstream _oss;
@@ -385,8 +446,9 @@ template <typename T> class AVLTree {
       #endif
     }
 
+    
     void remove(const T& key) {
-      root = deleteNode(root, key);
+      deleteNode(root, key);
       #ifdef AVL_VISUALIZER
       {
         ostringstream _oss;
@@ -398,22 +460,40 @@ template <typename T> class AVLTree {
       #endif
     }
 
+    
+    AVLNode<T>* search(AVLNode<T>* node, const T& key) const {
+      addOp(); 
+      if (node == nullptr || node->key == key) return node;
+      
+      addOp(); 
+      if (key < node->key) return search(node->left, key);
+      return search(node->right, key);
+    }
+
     bool search(const T& key) const {
       return (search(this->root, key) != nullptr );
     }
 
-    void addDerivedWord(const T& key, const string& word) {
+    void addDerivedWord(const T& key, const string& word, const string& scheme = "") {
       AVLNode<T>* node = search(root, key);
       if (node != nullptr) {
         for (auto& dw : node->derivedWords) {
+          addOp();
           if (dw.word == word) {
             dw.frequency++;
+            if (dw.scheme.empty() && !scheme.empty()) dw.scheme = scheme;
             return;
           }
         }
-        node->derivedWords.push_back(DerivedWord(word, 1));
+        addOp();
+        node->derivedWords.push_back(DerivedWord(word, scheme, 1));
       }
     }
+
+    
+
+    int getOperationCount() const { return operationCount; }
+    int getRotationCount() const { return rotationCount; }
 
     vector<DerivedWord> getFamily(const T& key) const {
       AVLNode<T>* node = search(root, key);

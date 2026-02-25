@@ -291,7 +291,7 @@ class corpusAnalyzer {
             }
 
             if (wordAccepted) {
-              tree.addDerivedWord(candidateRoot, word);
+              tree.addDerivedWord(candidateRoot, word, scheme.name);
               report.derivedWordsLogged++;
 
               localWordFrequencies.addWord(word, candidateRoot, scheme.name);

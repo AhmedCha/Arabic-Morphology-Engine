@@ -186,6 +186,16 @@ async function processEvent(event) {
     }
     setComplexity("Search", "O(log n)", "O(1)");
     if (treeRoot) await renderTree(treeRoot, highlightKey, null);
+    if (event.found) {
+      const nodeEl = d3
+        .selectAll("g.node")
+        .filter((d) => d.key === event.key)
+        .node();
+      if (nodeEl) {
+        const d = d3.select(nodeEl).datum();
+        if (d) zoomToNode(d.x, d.y);
+      }
+    }
     setTimeout(() => {
       highlightKey = null;
       if (treeRoot) renderTree(treeRoot, null, null);
@@ -200,17 +210,43 @@ async function processEvent(event) {
         const tr = document.createElement("tr");
         const tdWord = document.createElement("td");
         tdWord.textContent = dw.word;
+        const tdSch = document.createElement("td");
+        tdSch.textContent = dw.scheme || "-";
         const tdFreq = document.createElement("td");
         tdFreq.textContent = dw.frequency;
         tr.appendChild(tdWord);
+        tr.appendChild(tdSch);
         tr.appendChild(tdFreq);
         tbody.appendChild(tr);
       });
     } else {
       tbody.innerHTML =
-        "<tr><td colspan='2' style='text-align:center;color:var(--text-tertiary)'>No words derived from this root seen so far.</td></tr>";
+        "<tr><td colspan='3' style='text-align:center;color:var(--text-tertiary)'>No words derived from this root seen so far.</td></tr>";
     }
     document.getElementById("family-modal").classList.remove("hidden");
+  } else if (type === "corpus_report") {
+    if (event.success) {
+      showToast("insert", `Corpus Analysis Complete!`);
+      const msg = `Words parsed: ${event.totalWordsProcessed} | New Roots: ${event.newRootsFound} | Derivatives Logged: ${event.derivedWordsLogged}`;
+      addLog("system", "📝", `Corpus Analysis Report`, msg);
+
+      // Auto zoom to root over time as it's balanced
+      if (treeRoot) {
+        zoomToNode(
+          d3
+            .selectAll("g.node")
+            .filter((d) => d.depth === 0)
+            .datum()?.x || 200,
+          d3
+            .selectAll("g.node")
+            .filter((d) => d.depth === 0)
+            .datum()?.y || 200,
+        );
+      }
+    } else {
+      showToast("notfound", `Corpus Analysis Failed!`);
+      addLog("system", "✗", `Validation Error`, `Unable to read corpus.`);
+    }
   }
 }
 

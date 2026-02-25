@@ -252,17 +252,29 @@ void MainWindow::pollVisualizerCommands() {
         m_tree->insert(arg.toStdString());
         rootsTab->refreshTable();
     } else if (cmd == "delete") {
+        rootsTab->clearSelection();
         m_tree->remove(arg.toStdString());
         rootsTab->refreshTable();
     } else if (cmd == "corpus") {
-        corpusAnalyzer::analyzeFile(arg.toStdString(), *m_tree, *m_schemes, false);
+        AnalysisReport report = corpusAnalyzer::analyzeFile(arg.toStdString(), *m_tree, *m_schemes, false);
         rootsTab->refreshTable();
+        
+        QString json = "{\"type\":\"corpus_report\",\"success\":" + QString(report.success ? "true" : "false") + 
+                       ",\"totalWordsProcessed\":" + QString::number(report.totalWordsProcessed) + 
+                       ",\"derivedWordsLogged\":" + QString::number(report.derivedWordsLogged) + 
+                       ",\"newRootsFound\":" + QString::number(report.newRootsFound) + "}";
+        QFile evFile("/tmp/avl_events.jsonl");
+        if (evFile.open(QIODevice::Append | QIODevice::Text)) {
+            QTextStream out(&evFile);
+            out << json << "\n";
+            evFile.close();
+        }
     } else if (cmd == "family") {
         std::vector<DerivedWord> family = m_tree->getFamily(arg.toStdString());
         
         QString json = "{\"type\":\"family_result\",\"key\":\"" + arg + "\",\"family\":[";
         for (size_t i = 0; i < family.size(); ++i) {
-            json += "{\"word\":\"" + QString::fromStdString(family[i].word) + "\",\"frequency\":" + QString::number(family[i].frequency) + "}";
+            json += "{\"word\":\"" + QString::fromStdString(family[i].word) + "\",\"scheme\":\"" + QString::fromStdString(family[i].scheme) + "\",\"frequency\":" + QString::number(family[i].frequency) + "}";
             if (i < family.size() - 1) json += ",";
         }
         json += "]}";
